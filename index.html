@@ -1628,7 +1628,7 @@ function renderRenewal(removableBySku) {
       buCost[bu] = (buCost[bu] || 0) + costNovo;
       buCostAtual[bu] = (buCostAtual[bu] || 0) + costAtual;
       if (!buBreakdown[bu]) buBreakdown[bu] = {};
-      buBreakdown[bu][r.sku] = { qtd, custo: costNovo, custoAtual };
+      buBreakdown[bu][r.sku] = { qtd, custo: costNovo, custoAtual: costAtual };
     });
     // Sobras = qtdRenov − totalAssigned
     const sobraQtd = Math.max(0, r.qtdRenov - totalAssigned);
