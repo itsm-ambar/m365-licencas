@@ -1,0 +1,2163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Licenças — M365</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --pink: #FB0047;
+    --pink-dark: #C2003A;
+    --pink-light: #FFD9E3;
+    --pink-bg: #FFF5F8;
+    --bg: #FAFAFA;
+    --card: #FFFFFF;
+    --text: #1A1A1A;
+    --text-muted: #6B6B6B;
+    --text-dim: #9E9E9E;
+    --border: #EEEEEE;
+    --border-strong: #E0E0E0;
+    --green: #2E7D32;
+    --green-bg: #E8F5E9;
+    --orange: #F57C00;
+    --orange-bg: #FFF3E0;
+    --red: #D32F2F;
+    --red-bg: #FFEBEE;
+    --blue: #1976D2;
+    --blue-bg: #E3F2FD;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 80px; }
+  .hidden { display: none !important; }
+
+  /* Header */
+  .header {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 18px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .header-left { display: flex; align-items: baseline; gap: 16px; }
+  .logo { font-size: 22px; font-weight: 700; color: var(--pink); letter-spacing: -0.02em; }
+  .subtitle { font-size: 13px; color: var(--text-muted); }
+  .btn {
+    background: var(--card);
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+    padding: 9px 14px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--pink); color: var(--pink); }
+  .btn-primary { background: var(--pink); color: white; border-color: var(--pink); }
+  .btn-primary:hover { background: var(--pink-dark); border-color: var(--pink-dark); color: white; }
+
+  /* Upload */
+  .upload-section {
+    background: var(--pink-bg);
+    border: 1px dashed var(--pink);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .upload-section h2 { font-size: 16px; font-weight: 600; color: var(--pink-dark); margin-bottom: 8px; }
+  .upload-section p { color: var(--text-muted); font-size: 13px; margin-bottom: 16px; }
+  .upload-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; max-width: 900px; margin: 0 auto; }
+  .upload-box {
+    background: white;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .upload-box:hover { border-color: var(--pink); }
+  .upload-box.loaded { border-color: var(--green); background: var(--green-bg); }
+  .upload-box-label { font-size: 11px; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 4px; }
+  .upload-box-file { font-size: 13px; font-weight: 500; }
+  .upload-box-status { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .upload-box.loaded .upload-box-status { color: var(--green); font-weight: 500; }
+  input[type=file] { display: none; }
+
+  /* BU Tabs */
+  .bu-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 6px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    overflow-x: auto;
+  }
+  .bu-tab {
+    flex: 1;
+    min-width: 130px;
+    background: transparent;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--text-muted);
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    white-space: nowrap;
+    text-align: center;
+  }
+  .bu-tab:hover:not(.active) { background: var(--pink-bg); color: var(--text); }
+  .bu-tab.active { background: var(--pink); color: white; }
+  .bu-tab.active .bu-tab-cost { color: white; opacity: 0.9; }
+  .bu-tab-name { font-weight: 600; }
+  .bu-tab-cost { font-size: 11px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+  .bu-tab.unmapped:not(.active) { color: var(--orange); }
+
+  /* Banner */
+  .banner {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    flex-wrap: wrap;
+  }
+  .banner-stat .num { font-size: 22px; font-weight: 700; color: var(--pink); letter-spacing: -0.02em; }
+  .banner-stat .lbl { font-size: 12px; color: var(--text-muted); }
+  .status-mini { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .status-mini .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+
+  /* KPIs */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .kpi {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 18px 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .kpi:hover {
+    border-color: var(--pink);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(251, 0, 71, 0.08);
+  }
+  .kpi-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .kpi-icon {
+    width: 28px;
+    height: 28px;
+    background: var(--pink-light);
+    color: var(--pink-dark);
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    margin-right: 4px;
+  }
+  .kpi-icon.warn { background: var(--orange-bg); color: var(--orange); }
+  .kpi-icon.danger { background: var(--red-bg); color: var(--red); }
+  .kpi-icon.info { background: var(--blue-bg); color: var(--blue); }
+  .kpi-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .kpi-sub { font-size: 12px; color: var(--text-muted); }
+
+  /* Sections */
+  section { margin-bottom: 24px; }
+  .section-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .section-title-bar { width: 3px; height: 18px; background: var(--pink); border-radius: 2px; }
+  .section-hint { font-size: 12px; color: var(--text-dim); }
+
+  /* BU cards (visão "Todas") */
+  .bu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .bu-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--card);
+  }
+  .bu-card:hover { border-color: var(--pink); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+  .bu-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .bu-name { font-size: 14px; font-weight: 600; }
+  .bu-share { font-size: 11px; background: var(--pink-light); color: var(--pink-dark); padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+  .bu-cost { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .bu-meta { display: flex; gap: 14px; font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+  .bu-progress { height: 4px; background: var(--border); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+  .bu-progress-fill { height: 100%; background: var(--pink); border-radius: 2px; transition: width 0.4s; }
+  .bu-card.unmapped { border-style: dashed; }
+  .bu-card.unmapped .bu-name { color: var(--orange); }
+  .bu-card.unmapped .bu-progress-fill { background: var(--orange); }
+
+  /* SKU list */
+  .sku-row {
+    display: grid;
+    grid-template-columns: 1fr 70px 110px 130px;
+    gap: 14px;
+    padding: 12px 8px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.1s;
+    border-radius: 6px;
+  }
+  .sku-row:hover { background: var(--pink-bg); }
+  .sku-row.head {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: default;
+    border-bottom: 1px solid var(--border-strong);
+    font-weight: 600;
+  }
+  .sku-row.head:hover { background: transparent; }
+  .sku-name { font-weight: 500; font-size: 13px; }
+  .sku-num { font-variant-numeric: tabular-nums; text-align: right; font-size: 13px; }
+  .sku-num.total { font-weight: 600; color: var(--pink-dark); }
+
+  /* Filters & table */
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+  .filter-search {
+    flex: 1;
+    min-width: 220px;
+    background: var(--card);
+    border: 1px solid var(--border-strong);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+  }
+  .filter-search:focus { border-color: var(--pink); }
+  .chip {
+    background: var(--card);
+    border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .chip:hover { color: var(--text); border-color: var(--pink); }
+  .chip.active { background: var(--pink); color: white; border-color: var(--pink); }
+
+  .table-wrap { background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+  .table-scroll { max-height: 600px; overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: var(--pink-bg); position: sticky; top: 0; z-index: 1; }
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--pink-dark);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--pink-light);
+  }
+  th:hover { background: var(--pink-light); }
+  th.sorted::after { content: ' ↓'; }
+  th.sorted-asc::after { content: ' ↑'; }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr { transition: background 0.1s; cursor: pointer; }
+  tbody tr:hover { background: var(--pink-bg); }
+  tbody tr.blocked td:first-child { color: var(--text-dim); }
+  tbody tr.blocked td:first-child::before { content: '⊘'; color: var(--red); margin-right: 6px; font-weight: bold; }
+  .bu-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--pink-light);
+    color: var(--pink-dark);
+  }
+  .bu-tag.empty { background: var(--orange-bg); color: var(--orange); }
+  .lic-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    background: var(--pink-light);
+    color: var(--pink-dark);
+    border: 1px solid var(--pink-light);
+    margin: 2px;
+    white-space: nowrap;
+  }
+  .pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 24px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+  }
+  .pagination button {
+    background: var(--card);
+    border: 1px solid var(--border-strong);
+    padding: 7px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 4px;
+  }
+  .pagination button:hover:not(:disabled) { border-color: var(--pink); color: var(--pink); }
+  .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Alerts */
+  .alert {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    border-left: 3px solid var(--orange);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .alert.danger { border-left-color: var(--red); }
+  .alert.info { border-left-color: var(--blue); }
+  .alert b { color: var(--text); }
+  .alert-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    background: var(--orange-bg);
+    color: var(--orange);
+  }
+  .alert.danger .alert-icon { background: var(--red-bg); color: var(--red); }
+  .alert.info .alert-icon { background: var(--blue-bg); color: var(--blue); }
+  .alert-action {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid var(--pink);
+    color: var(--pink);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .alert-action:hover { background: var(--pink-bg); }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .modal {
+    background: var(--card);
+    border-radius: 14px;
+    max-width: 800px;
+    width: 100%;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .modal-head { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal-title { font-size: 18px; font-weight: 700; }
+  .modal-close {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    color: var(--text-muted);
+    line-height: 1;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+  }
+  .modal-close:hover { background: var(--bg); color: var(--text); }
+  .modal-body { padding: 20px 24px; overflow-y: auto; }
+  .empty { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+
+  /* === Renewal scenarios === */
+  .scenarios-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .scenario-card { border: 1px solid var(--border); border-radius: 10px; padding: 16px; background: var(--card); }
+  .scenario-card.atual { border-color: var(--border-strong); }
+  .scenario-card.renov-mesma { border-color: var(--orange); background: var(--orange-bg); }
+  .scenario-card.renov-otim { border-color: var(--green); background: var(--green-bg); }
+  .scenario-card.recomendado { border: 2px solid var(--green); }
+  .scenario-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .scenario-card.recomendado .scenario-label { color: var(--green); }
+  .scenario-cost { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .scenario-annual { font-size: 12px; color: var(--text-muted); }
+  .scenario-delta { font-size: 12px; margin-top: 8px; padding: 4px 8px; border-radius: 4px; display: inline-block; font-weight: 600; }
+  .scenario-delta.up { background: var(--red-bg); color: var(--red); }
+  .scenario-delta.down { background: var(--green-bg); color: var(--green); }
+
+  .renewal-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+  .renewal-table th {
+    background: var(--bg); padding: 10px 8px; text-align: right;
+    font-size: 10px; text-transform: uppercase; color: var(--text-muted);
+    letter-spacing: 0.05em; font-weight: 600; border-bottom: 1px solid var(--border-strong);
+  }
+  .renewal-table th:first-child { text-align: left; }
+  .renewal-table th.col-mesma { background: var(--orange-bg); color: var(--orange); }
+  .renewal-table th.col-otim { background: var(--green-bg); color: var(--green); }
+  .renewal-table td { padding: 8px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; text-align: right; }
+  .renewal-table td:first-child { text-align: left; font-weight: 500; }
+  .renewal-table td.col-mesma { background: rgba(245, 124, 0, 0.05); }
+  .renewal-table td.col-otim { background: rgba(46, 125, 50, 0.05); }
+  .renewal-table tfoot td { font-weight: 700; font-size: 13px; border-top: 2px solid var(--border-strong); background: var(--bg); }
+  .renewal-table tfoot td.col-mesma { background: var(--orange-bg); color: var(--orange); }
+  .renewal-table tfoot td.col-otim { background: var(--green-bg); color: var(--green); }
+  .renewal-table td.delta-up { color: var(--red); }
+  .renewal-table td.delta-down { color: var(--green); }
+  .renewal-table td.delta-zero { color: var(--text-dim); }
+  .renewal-table tfoot td.delta-up { color: var(--red); }
+  .renewal-table tfoot td.delta-down { color: var(--green); }
+  .price-change-up { color: var(--red); font-size: 10px; font-weight: 600; }
+  .price-change-down { color: var(--green); font-size: 10px; font-weight: 600; }
+  .price-change-same { color: var(--text-dim); font-size: 10px; }
+
+  /* === Inventory bars === */
+  .inv-row { display: grid; grid-template-columns: 1.5fr 1fr 110px; gap: 16px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .inv-row:last-child { border-bottom: none; }
+  .inv-sku-name { font-weight: 500; font-size: 13px; }
+  .inv-sku-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .inv-bar-wrap { position: relative; height: 24px; background: var(--bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+  .inv-bar-used { position: absolute; top: 0; left: 0; bottom: 0; background: linear-gradient(90deg, var(--green) 0%, #4caf50 100%); }
+  .inv-bar-label { position: absolute; top: 0; right: 8px; bottom: 0; display: flex; align-items: center; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .inv-waste { text-align: right; font-size: 13px; font-weight: 600; color: var(--red); font-variant-numeric: tabular-nums; }
+  .inv-waste.zero { color: var(--green); }
+  .inv-waste-sub { font-size: 10px; color: var(--text-dim); }
+
+  /* === Issue cards (redundâncias) === */
+  .issue-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; margin-bottom: 8px;
+    display: flex; gap: 12px; align-items: center; border-left: 3px solid var(--red);
+  }
+  .issue-card.info { border-left-color: var(--blue); }
+  .issue-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--red-bg); color: var(--red);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; flex-shrink: 0;
+  }
+  .issue-card.info .issue-icon { background: var(--blue-bg); color: var(--blue); }
+  .issue-text { flex: 1; font-size: 13px; }
+  .issue-text b { color: var(--text); }
+  .issue-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .issue-amount { font-size: 14px; font-weight: 700; color: var(--red); text-align: right; }
+  .issue-card.info .issue-amount { color: var(--blue); }
+  .issue-amount-sub { font-size: 10px; color: var(--text-dim); font-weight: 400; }
+
+  .sub-tabs {
+    display: flex; gap: 4px; background: var(--bg);
+    padding: 4px; border-radius: 8px; margin-bottom: 16px;
+  }
+  .sub-tab {
+    flex: 1; padding: 10px 14px; background: transparent;
+    border: none; border-radius: 6px; cursor: pointer;
+    font-family: inherit; font-size: 13px; font-weight: 500;
+    color: var(--text-muted); transition: all 0.15s;
+  }
+  .sub-tab:hover:not(.active) { background: var(--card); color: var(--text); }
+  .sub-tab.active { background: var(--card); color: var(--pink-dark); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">M365 · Licenças</div>
+      <div class="subtitle" id="snapshotInfo">Aguardando dados…</div>
+    </div>
+    <button class="btn" onclick="resetAll()">↻ Recarregar</button>
+  </div>
+
+  <div class="upload-section" id="uploadSection">
+    <h2>Carregue o CSV de usuários do Microsoft 365</h2>
+    <p>Preços e quantidades contratadas já estão configurados. Tudo roda 100% local.</p>
+    <div class="upload-grid">
+      <label class="upload-box" id="boxExport">
+        <div class="upload-box-label">1. Usuários (obrigatório)</div>
+        <div class="upload-box-file">Selecionar CSV…</div>
+        <div class="upload-box-status">"Usuários ativos" do M365 Admin Center</div>
+        <input type="file" accept=".csv" id="fileExport">
+      </label>
+      <label class="upload-box" id="boxInv">
+        <div class="upload-box-label">2. Inventário (opcional)</div>
+        <div class="upload-box-file">Selecionar CSV…</div>
+        <div class="upload-box-status">Atualiza quantidade contratada · só se mudou</div>
+        <input type="file" accept=".csv" id="fileInv">
+      </label>
+      <label class="upload-box" id="boxMaster">
+        <div class="upload-box-label">3. Planilha mestre (opcional)</div>
+        <div class="upload-box-file">Selecionar Excel…</div>
+        <div class="upload-box-status">Sobrepõe preços · raramente necessário</div>
+        <input type="file" accept=".xlsx,.xls" id="fileMaster">
+      </label>
+    </div>
+    <button class="btn btn-primary" id="btnGo" style="margin-top: 16px;" disabled onclick="tryBuild(true)">Continuar →</button>
+  </div>
+
+  <div id="content" class="hidden">
+
+    <!-- BU Tabs -->
+    <div class="bu-tabs" id="buTabs"></div>
+
+    <!-- Banner -->
+    <div class="banner">
+      <div class="banner-stat"><div class="num" id="bUsers">—</div><div class="lbl">usuários</div></div>
+      <div class="banner-stat"><div class="num" id="bBUs">—</div><div class="lbl">BUs</div></div>
+      <div class="banner-stat"><div class="num" id="bSkus">—</div><div class="lbl">tipos de licença</div></div>
+      <div class="banner-stat"><div class="num" id="bBlocked">—</div><div class="lbl">bloqueados</div></div>
+      <div style="margin-left: auto;" class="status-mini">
+        <span class="dot"></span> Snapshot <b id="snapDate" style="color: var(--text);">—</b>
+      </div>
+    </div>
+
+    <div id="alertBox"></div>
+
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="kpi">
+        <div class="kpi-label"><span class="kpi-icon">$</span>Em uso (atribuídas)</div>
+        <div class="kpi-value" id="kpiMonthly">—</div>
+        <div class="kpi-sub" id="kpiAnnual">— / ano</div>
+      </div>
+      <div class="kpi" id="kpiContractedCard">
+        <div class="kpi-label"><span class="kpi-icon info">⚏</span>Contratado (fatura)</div>
+        <div class="kpi-value" id="kpiContracted">—</div>
+        <div class="kpi-sub" id="kpiContractedSub">— / ano</div>
+      </div>
+      <div class="kpi" id="kpiWasteCard" onclick="switchOptTab('inventory');">
+        <div class="kpi-label"><span class="kpi-icon danger">⊘</span>Desperdício (paradas)</div>
+        <div class="kpi-value" id="kpiWaste">—</div>
+        <div class="kpi-sub" id="kpiWasteSub">— / ano</div>
+      </div>
+      <div class="kpi" id="kpiUnmappedCard" onclick="switchTab('Não mapeado');">
+        <div class="kpi-label"><span class="kpi-icon warn">?</span>Sem BU definida</div>
+        <div class="kpi-value" id="kpiUnmapped">—</div>
+        <div class="kpi-sub" id="kpiUnmappedSub">—</div>
+      </div>
+    </div>
+
+    <!-- BU cards (só aparece na aba "Todas") -->
+    <section id="buGridSection">
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-title"><span class="section-title-bar"></span>Custos por Business Unit</div>
+          <div class="section-hint">Clique em uma BU para detalhar</div>
+        </div>
+        <div class="bu-grid" id="buGrid"></div>
+      </div>
+    </section>
+
+    <!-- SKU breakdown -->
+    <section>
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-title">
+            <span class="section-title-bar"></span>
+            <span id="skuTitle">Mix de licenças (SKUs)</span>
+          </div>
+          <div class="section-hint">Apenas pagas · clique em uma SKU para detalhar</div>
+        </div>
+        <div class="sku-row head">
+          <div>SKU</div>
+          <div class="sku-num">Qtd</div>
+          <div class="sku-num">Preço</div>
+          <div class="sku-num">Total/mês</div>
+        </div>
+        <div id="skuList"></div>
+      </div>
+    </section>
+
+    <!-- Otimização (só com inventário carregado) -->
+    <section id="optimizationSection" class="hidden">
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-title"><span class="section-title-bar"></span>Otimização & Renovação</div>
+          <div class="section-hint" id="renewalDate">Renovação em 09/06</div>
+        </div>
+
+        <div class="sub-tabs" id="optTabs">
+          <button class="sub-tab active" data-opt-tab="renewal">Renovação 09/06</button>
+          <button class="sub-tab" data-opt-tab="inventory">Inventário (contratado vs uso)</button>
+          <button class="sub-tab" data-opt-tab="redundancy">Redundâncias por usuário</button>
+        </div>
+
+        <!-- Renewal -->
+        <div id="optRenewal" class="opt-panel">
+          <div class="scenarios-grid" id="scenariosGrid"></div>
+          <div style="overflow-x: auto;">
+            <table class="renewal-table" id="renewalTable"></table>
+          </div>
+          <div style="margin-top: 14px; font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+            <b style="color: var(--text);">Como ler:</b> "Renovação mantendo qtd" usa os novos preços com o mesmo número de licenças contratadas hoje. "Renovação otimizada" usa só o que está atribuído. "Ultra-otimizada" desconta também redundâncias (Basic+Teams etc).
+          </div>
+        </div>
+
+        <!-- Inventory -->
+        <div id="optInventory" class="opt-panel hidden">
+          <div id="inventoryList"></div>
+          <div style="margin-top: 16px; padding: 14px; background: var(--bg); border-radius: 8px; font-size: 13px;">
+            <b>Total contratado:</b> <span id="invTotalContracted">—</span> ·
+            <b>Em uso:</b> <span id="invTotalUsed">—</span> ·
+            <b style="color: var(--red);">Desperdício:</b> <span id="invTotalWaste" style="color: var(--red);">—</span>
+          </div>
+        </div>
+
+        <!-- Redundancy -->
+        <div id="optRedundancy" class="opt-panel hidden">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+            <div style="font-size: 13px; color: var(--text-muted);">Usuários com configurações de licenças problemáticas</div>
+            <button class="btn btn-primary" onclick="exportRedundanciesCSV()">⬇ Exportar CSV</button>
+          </div>
+          <div id="redundancyList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Users -->
+    <section id="usersSection">
+      <div class="section-head" style="padding: 0 4px 14px;">
+        <div class="section-title"><span class="section-title-bar"></span><span id="usersTitle">Usuários</span></div>
+        <div class="section-hint" id="usersFilterInfo">—</div>
+      </div>
+      <div class="filters">
+        <input type="search" class="filter-search" id="searchInput" placeholder="Buscar por nome, e-mail, departamento, gestor ou licença…">
+        <span class="chip" id="chipBlocked">Apenas bloqueados</span>
+        <span class="chip" id="chipRedundancy">Apenas com redundância</span>
+        <button class="btn" id="btnExport" onclick="exportUsersCSV()" style="margin-left: auto;">⬇ Exportar CSV (0)</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-scroll">
+          <table id="usersTable">
+            <thead>
+              <tr>
+                <th data-sort="name">Nome</th>
+                <th data-sort="email">E-mail</th>
+                <th data-sort="bu">BU</th>
+                <th data-sort="cc">Centro de Custo</th>
+                <th data-sort="gestor">Gestor</th>
+                <th data-sort="licenses">Licenças</th>
+                <th data-sort="monthly_cost" class="num">Custo/mês</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <div id="pagInfo">—</div>
+          <div>
+            <button id="pagPrev">‹ Anterior</button>
+            <button id="pagNext">Próximo ›</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="modalTitle">—</div>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// DADOS DE REFERÊNCIA
+// =====================================================================
+let DEFAULT_PRICES = {
+  "Microsoft 365 Empresas Basic": 30.87,
+  "Microsoft 365 Empresas": 77.28,
+  "Microsoft Teams Enterprise": 32.48,
+  "Office 365 E1 (sem Teams)": 47.93,
+  "Office 365 E3 (sem Teams)": 128.23,
+  "Power BI Pro": 86.57,
+  "Power Automate Premium": 86.93,
+  "OneDrive for Business (Plan 2)": 61.85,
+  "Microsoft Power Automate Free": 0,
+  "Microsoft Fabric (Gratuito)": 0,
+  "Microsoft Power Apps for Developer": 0,
+  "Microsoft Power Apps Plan 2 Trial": 0,
+  "Microsoft Power Apps for Office 365": 0,
+  "Microsoft Teams Exploratory": 0,
+  "Teams Premium (para Departamentos)": 0,
+};
+
+// Normaliza nomes em diferentes idiomas → versão canônica (PT)
+const SKU_ALIASES = {
+  "microsoft 365 business basic": "Microsoft 365 Empresas Basic",
+  "microsoft 365 business standard": "Microsoft 365 Empresas",
+  "office 365 e1 (no teams)": "Office 365 E1 (sem Teams)",
+  "office 365 e3 (no teams)": "Office 365 E3 (sem Teams)",
+  "microsoft fabric (free)": "Microsoft Fabric (Gratuito)",
+  "teams premium (for departments)": "Teams Premium (para Departamentos)",
+  "onedrive for business (plan 2)": "OneDrive for Business (Plan 2)",
+  "onedrive for business (plano 2)": "OneDrive for Business (Plan 2)",
+  "onedrive para empresas (plano 2)": "OneDrive for Business (Plan 2)",
+};
+
+// SKUs gratuitas — escondidas do dashboard mas mantidas no perfil do usuário
+const FREE_SKUS = new Set([
+  "Microsoft Power Automate Free",
+  "Microsoft Fabric (Gratuito)",
+  "Microsoft Power Apps for Developer",
+  "Microsoft Power Apps Plan 2 Trial",
+  "Microsoft Power Apps for Office 365",
+  "Microsoft Teams Exploratory",
+  "Teams Premium (para Departamentos)",
+]);
+
+// Preços DE RENOVAÇÃO padrão (a partir de 09/06) — usados se a planilha não trouxer
+const NEW_PRICES_DEFAULT = {
+  "Microsoft 365 Empresas Basic": 30.87,
+  "Microsoft 365 Empresas": 77.28,
+  "Microsoft Teams Enterprise": 52.89,         // SUBIU
+  "Office 365 E1 (sem Teams)": 41.99,          // CAIU
+  "Office 365 E3 (sem Teams)": 89.27,          // CAIU
+  "Power BI Pro": 86.57,
+  "Power Automate Premium": 86.93,
+  "OneDrive for Business (Plan 2)": 61.85,
+};
+const RENEWAL_DATE = "09/06/2026";
+
+// =====================================================================
+// QUANTIDADE CONTRATADA (embutida) — edite aqui quando comprar/devolver licenças
+// O CSV de inventário (opcional) sobrescreve esses valores se carregado.
+// =====================================================================
+const DEFAULT_INVENTORY = [
+  { sku: "Microsoft 365 Empresas Basic",       total: 238 },
+  { sku: "Microsoft 365 Empresas",              total: 62 },
+  { sku: "Microsoft Teams Enterprise",         total: 155 },
+  { sku: "Office 365 E1 (sem Teams)",          total: 151 },
+  { sku: "Office 365 E3 (sem Teams)",           total: 27 },
+  { sku: "Power BI Pro",                        total: 11 },
+  { sku: "Power Automate Premium",               total: 1 },
+  { sku: "OneDrive for Business (Plan 2)",       total: 1 },
+];
+
+// =====================================================================
+// QUANTIDADE DE RENOVAÇÃO (09/06) — decidida pela negociação
+// Estas são as quantidades a CONTRATAR no novo ciclo
+// =====================================================================
+const RENEWAL_QUANTITIES = {
+  "Microsoft 365 Empresas Basic":   238,
+  "Microsoft 365 Empresas":          62,
+  "Microsoft Teams Enterprise":     102,  // devolve 53
+  "Office 365 E1 (sem Teams)":       97,  // devolve 54
+  "Office 365 E3 (sem Teams)":       27,
+  "Power BI Pro":                    11,
+  "Power Automate Premium":           1,
+  "OneDrive for Business (Plan 2)":   1,
+};
+
+// Aliases para o CSV de inventário (Licenças do Admin Center)
+const INVENTORY_ALIASES = {
+  "Microsoft 365 Business Basic": "Microsoft 365 Empresas Basic",
+  "Microsoft 365 Business Standard": "Microsoft 365 Empresas",
+  "OneDrive for Business (Plano 2)": "OneDrive for Business (Plan 2)",
+  "Teams Premium (for Departments)": "Teams Premium (para Departamentos)",
+  "FLOW_FREE": "Microsoft Power Automate Free",
+  "POWERAPPS_DEV": "Microsoft Power Apps for Developer",
+  "POWERAPPS_VIRAL": "Microsoft Power Apps Plan 2 Trial",
+  "Plano por usuário com RPA assistida do Power Automate": "Power Automate Premium",
+};
+
+// =====================================================================
+// ESTADO
+// =====================================================================
+let exportData = null;
+let masterData = {};
+let inventory = null;       // [{sku, total, assigned, unused}]
+let prices = { ...DEFAULT_PRICES };
+let newPrices = { ...NEW_PRICES_DEFAULT };
+let masterLoaded = false;
+let users = [];
+
+const state = {
+  tab: "all",
+  search: "",
+  blocked: false,
+  redundancy: false,
+  sortKey: "monthly_cost",
+  sortDir: "desc",
+  page: 1,
+  pageSize: 25,
+  optTab: "renewal",  // "renewal" | "inventory" | "redundancy"
+};
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+const BRL = v => "R$ " + (v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const NUM = v => (v || 0).toLocaleString("pt-BR");
+
+function normalizeSku(s) {
+  s = (s || "").trim();
+  return SKU_ALIASES[s.toLowerCase()] || s;
+}
+
+function parseLicenses(s) {
+  if (!s || s.trim() === "" || s.trim().toLowerCase() === "unlicensed") return [];
+  return s.split("+").map(x => normalizeSku(x.trim())).filter(Boolean);
+}
+
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r?\n/).filter(l => l.length > 0);
+  if (lines.length === 0) return [];
+  const firstLine = lines[0];
+  const delim = (firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length ? ";" : ",";
+  function parseLine(line) {
+    const out = [];
+    let cur = "", inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"' && !inQ) inQ = true;
+      else if (c === '"' && inQ) {
+        if (line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = false;
+      }
+      else if (c === delim && !inQ) { out.push(cur); cur = ""; }
+      else cur += c;
+    }
+    out.push(cur);
+    return out;
+  }
+  const rawHeaders = parseLine(lines[0]);
+  // Headers vazios (export Microsoft tem ";;;;" no fim para licenças extras) viram __extra_N
+  const headers = rawHeaders.map((h, i) => h.trim() === "" ? `__extra_${i}` : h.trim());
+  return lines.slice(1).map(line => {
+    const cols = parseLine(line);
+    const o = {};
+    // Inclui também células que extrapolem o número de colunas do header
+    const total = Math.max(headers.length, cols.length);
+    for (let i = 0; i < total; i++) {
+      const key = i < headers.length ? headers[i] : `__extra_${i}`;
+      o[key] = (cols[i] || "").trim();
+    }
+    return o;
+  });
+}
+
+function usersForActiveTab() {
+  if (state.tab === "all") return users;
+  return users.filter(u => u.bu === state.tab);
+}
+
+// =====================================================================
+// CARREGADORES
+// =====================================================================
+document.getElementById("fileExport").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const text = await f.text();
+  exportData = parseCSV(text);
+  const box = document.getElementById("boxExport");
+  box.classList.add("loaded");
+  box.querySelector(".upload-box-file").textContent = f.name;
+  box.querySelector(".upload-box-status").textContent = `✓ ${exportData.length} linhas carregadas`;
+  updateGoButton();
+});
+
+document.getElementById("fileMaster").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const buf = await f.arrayBuffer();
+  const wb = XLSX.read(buf);
+  masterData = {};
+
+  // === Aba "Atribuições" (nova, enxuta) — opcional, pode vir vazia ===
+  // Compat: "Geral" / "Mapeamento" (formato antigo)
+  const wsAttr = wb.Sheets["Atribuições"] || wb.Sheets["Atribuicoes"] || wb.Sheets["Geral"] || wb.Sheets["Mapeamento"];
+  if (wsAttr) {
+    // range 5 = pula 6 linhas de header decorativo
+    const tryRanges = [5, 4, 3];
+    for (const range of tryRanges) {
+      const rows = XLSX.utils.sheet_to_json(wsAttr, { range, defval: "" });
+      if (rows.length === 0) continue;
+      let found = false;
+      rows.forEach(r => {
+        const email = (r["E-mail (UPN)"] || r["E-mail"] || r["Email"] || "").toString().trim().toLowerCase();
+        if (!email || !email.includes("@")) return;
+        const bu = (r["BU / Empresa"] || r["BU"] || "").toString().trim();
+        if (!bu) return; // só guarda se realmente sobrescreve
+        masterData[email] = { bu };
+        found = true;
+      });
+      if (found) break;
+    }
+  }
+
+  // === Aba "Preços" ===
+  const wsPx = wb.Sheets["Preços"] || wb.Sheets["Precos"];
+  if (wsPx) {
+    // range 4 = pula header de "Tabela de Preços", subtítulo, linha de instruções
+    const pxRows = XLSX.utils.sheet_to_json(wsPx, { range: 4, defval: "" });
+    prices = {};
+    newPrices = {};
+    pxRows.forEach(r => {
+      const sku = (r["SKU (nome no Microsoft 365 Admin)"] || r["SKU"] || "").toString().trim();
+      if (!sku) return;
+      const pAtual = parseFloat(r["Preço atual (R$)"] || r["Preço mensal (R$)"]) || 0;
+      const pNovo = parseFloat(r["Preço novo — renovação (R$)"] || r["Preço novo"]) || pAtual;
+      const canonical = normalizeSku(sku);
+      prices[canonical] = pAtual;
+      newPrices[canonical] = pNovo;
+    });
+  } else {
+    prices = { ...DEFAULT_PRICES };
+    newPrices = { ...NEW_PRICES_DEFAULT };
+  }
+
+  const box = document.getElementById("boxMaster");
+  box.classList.add("loaded");
+  box.querySelector(".upload-box-file").textContent = f.name;
+  const overrideCount = Object.keys(masterData).length;
+  box.querySelector(".upload-box-status").textContent =
+    `✓ ${Object.keys(prices).length} preços` +
+    (overrideCount > 0 ? ` · ${overrideCount} BUs sobrepostas` : "");
+  masterLoaded = true;
+  updateGoButton();
+});
+
+document.getElementById("fileInv").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const text = await f.text();
+  const rows = parseCSV(text);
+  inventory = rows.map(r => {
+    const raw = r["Nome do Produto"] || "";
+    const canon = INVENTORY_ALIASES[raw] || normalizeSku(raw);
+    return {
+      sku: canon,
+      total: parseInt(r["Total de Licenças"]) || 0,
+      assigned: parseInt(r["Licenças atribuídas"]) || 0,
+    };
+  }).filter(r => r.sku);
+  const box = document.getElementById("boxInv");
+  box.classList.add("loaded");
+  box.querySelector(".upload-box-file").textContent = f.name;
+  box.querySelector(".upload-box-status").textContent = `✓ ${inventory.length} produtos`;
+  updateGoButton();
+});
+
+function tryBuild(forceContinue) {
+  if (!exportData) return;
+  buildUsers();
+  // Se não veio CSV de inventário, monta o inventário a partir do DEFAULT_INVENTORY
+  // (quantidade contratada) + contagem de atribuições dos usuários
+  if (!inventory) {
+    const assignedCount = {};
+    users.forEach(u => {
+      // conta tanto pagas quanto gratuitas pra refletir o "assigned" do M365
+      [...u.licenses, ...(u.free_licenses || [])].forEach(sku => {
+        assignedCount[sku] = (assignedCount[sku] || 0) + 1;
+      });
+    });
+    inventory = DEFAULT_INVENTORY.map(item => ({
+      sku: item.sku,
+      total: item.total,
+      assigned: assignedCount[item.sku] || 0,
+    }));
+  }
+  renderAll();
+  document.getElementById("content").classList.remove("hidden");
+  document.getElementById("uploadSection").classList.add("hidden");
+}
+
+// Habilita o botão "Continuar" assim que o CSV de usuários chega
+function updateGoButton() {
+  const btn = document.getElementById("btnGo");
+  if (btn) btn.disabled = !exportData;
+}
+
+function resetAll() { location.reload(); }
+
+// =====================================================================
+// MONTAGEM DOS USUÁRIOS
+// =====================================================================
+function buildUsers() {
+  users = [];
+  exportData.forEach(row => {
+    const upn = (row["User principal name"] || "").trim().toLowerCase();
+    if (!upn || !upn.includes("@")) return;
+    // O CSV pode trazer licenças em múltiplas colunas (cabeçalho vazio = __extra_N)
+    // ou separadas por "+" dentro da coluna Licenses (formato antigo).
+    const knownCols = new Set([
+      "Display name", "User principal name", "Dominio", "Domínio", "Domain",
+      "First name", "Last name", "Title", "Department", "Office",
+      "Block credential", "When created", "Direct sync enabled", "DirSyncEnabled",
+    ]);
+    const allLicenses = [];
+    Object.keys(row).forEach(k => {
+      if (k === "Licenses" || k.startsWith("__extra_")) {
+        const v = row[k];
+        if (v && v.trim()) {
+          parseLicenses(v).forEach(l => {
+            if (!allLicenses.includes(l)) allLicenses.push(l);
+          });
+        }
+      }
+    });
+    if (allLicenses.length === 0) return;
+    const paidLicenses = allLicenses.filter(l => !FREE_SKUS.has(l));
+    const freeLicenses = allLicenses.filter(l => FREE_SKUS.has(l));
+    const blocked = (row["Block credential"] || "").toLowerCase() === "true";
+    const master = masterData[upn] || {};
+    let bu = master.bu || row["Office"] || "";
+    const buUp = bu.toUpperCase();
+    if (buUp === "AUTODOC") bu = "Autodoc";
+    else if (buUp === "SIMPLE WALL") bu = "Simple Wall";
+    else if (buUp === "POLAR") bu = "Polar";
+    else if (buUp === "EUA") bu = "Ambar EUA";
+    if (!bu) bu = "Não mapeado";
+    const monthly = paidLicenses.reduce((s, l) => s + (prices[l] || 0), 0);
+    const issues = detectIssues(paidLicenses);
+    users.push({
+      name: row["Display name"] || "",
+      email: upn,
+      bu,
+      cc: master.cc || "",
+      gestor: master.gestor || "",
+      obs: master.obs || "",
+      title: row["Title"] || "",
+      department: row["Department"] || "",
+      blocked,
+      licenses: paidLicenses,
+      free_licenses: freeLicenses,
+      license_count: paidLicenses.length,
+      monthly_cost: Math.round(monthly * 100) / 100,
+      issues,
+    });
+  });
+}
+
+// Detecta problemas de combinação de licenças
+// Cada issue: { severity, description, removable: SKU ou null }
+function detectIssues(licenses) {
+  const set = new Set(licenses);
+  const issues = [];
+  const hasBasic = set.has("Microsoft 365 Empresas Basic");
+  const hasStd = set.has("Microsoft 365 Empresas");
+  const hasE1 = set.has("Office 365 E1 (sem Teams)");
+  const hasE3 = set.has("Office 365 E3 (sem Teams)");
+  const hasTeams = set.has("Microsoft Teams Enterprise");
+
+  if (hasBasic && hasTeams) {
+    issues.push({ severity: "danger", description: "Basic + Teams Enterprise (Basic já inclui Teams)", removable: "Microsoft Teams Enterprise" });
+  }
+  if (hasStd && hasTeams) {
+    issues.push({ severity: "danger", description: "Standard + Teams Enterprise (Standard já inclui Teams)", removable: "Microsoft Teams Enterprise" });
+  }
+  if (hasBasic && hasStd) {
+    issues.push({ severity: "danger", description: "Basic + Standard (Standard já inclui o Basic)", removable: "Microsoft 365 Empresas Basic" });
+  }
+  if (hasE1 && hasE3) {
+    issues.push({ severity: "danger", description: "E1 + E3 (E3 é superset do E1)", removable: "Office 365 E1 (sem Teams)" });
+  }
+  if (hasE1 && !hasTeams) {
+    issues.push({ severity: "danger", description: "E1 sem Teams Enterprise (E1 não inclui Teams e precisa dele)", removable: null });
+  }
+  if (hasE3 && !hasTeams) {
+    issues.push({ severity: "info", description: "E3 sem Teams Enterprise (pode ser intencional)", removable: null });
+  }
+  return issues;
+}
+
+// =====================================================================
+// RENDERIZAÇÃO
+// =====================================================================
+function renderAll() {
+  renderBUTabs();
+  renderBanner();
+  renderKPIs();
+  renderAlerts();
+  if (state.tab === "all") {
+    document.getElementById("buGridSection").classList.remove("hidden");
+    renderBUGrid();
+  } else {
+    document.getElementById("buGridSection").classList.add("hidden");
+  }
+  renderSKUs();
+  renderOptimization();
+  renderUsers();
+}
+
+function renderBUTabs() {
+  const agg = {};
+  users.forEach(u => {
+    if (!agg[u.bu]) agg[u.bu] = { cost: 0, count: 0 };
+    agg[u.bu].cost += u.monthly_cost;
+    agg[u.bu].count++;
+  });
+  // Ordem: maior custo primeiro, "Não mapeado" sempre por último
+  const entries = Object.entries(agg).sort((a, b) => {
+    if (a[0] === "Não mapeado") return 1;
+    if (b[0] === "Não mapeado") return -1;
+    return b[1].cost - a[1].cost;
+  });
+  const totalCost = entries.reduce((s, [, v]) => s + v.cost, 0);
+  const tabs = [["all", { cost: totalCost, count: users.length }]].concat(entries);
+  document.getElementById("buTabs").innerHTML = tabs.map(([bu, v]) => {
+    const label = bu === "all" ? "Todas as BUs" : bu;
+    const isUnmapped = bu === "Não mapeado";
+    return `
+      <button class="bu-tab ${state.tab === bu ? 'active' : ''} ${isUnmapped ? 'unmapped' : ''}"
+              onclick="switchTab('${bu.replace(/'/g, "\\'")}')">
+        <span class="bu-tab-name">${label}</span>
+        <span class="bu-tab-cost">${BRL(v.cost)} · ${v.count}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function switchTab(bu) {
+  state.tab = bu;
+  state.page = 1;
+  state.blocked = false;
+  state.redundancy = false;
+  state.search = "";
+  document.getElementById("searchInput").value = "";
+  document.getElementById("chipBlocked").classList.remove("active");
+  const chipR = document.getElementById("chipRedundancy");
+  if (chipR) chipR.classList.remove("active");
+  renderAll();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderBanner() {
+  const list = usersForActiveTab();
+  document.getElementById("bUsers").textContent = NUM(list.length);
+  const bus = new Set(list.map(u => u.bu));
+  document.getElementById("bBUs").textContent = bus.size;
+  const skus = new Set();
+  list.forEach(u => u.licenses.forEach(l => skus.add(l)));
+  document.getElementById("bSkus").textContent = skus.size;
+  document.getElementById("bBlocked").textContent = list.filter(u => u.blocked).length;
+  document.getElementById("snapDate").textContent = new Date().toLocaleDateString("pt-BR");
+  document.getElementById("snapshotInfo").textContent = state.tab === "all"
+    ? `${users.length} usuários · visão consolidada`
+    : `Filtrando: ${state.tab} · ${list.length} usuários`;
+}
+
+function renderKPIs() {
+  const list = usersForActiveTab();
+  const totalMonthly = list.reduce((s, u) => s + u.monthly_cost, 0);
+  document.getElementById("kpiMonthly").textContent = BRL(totalMonthly);
+  document.getElementById("kpiAnnual").textContent = BRL(totalMonthly * 12) + " / ano";
+
+  // KPIs de Contratado e Desperdício — só fazem sentido na aba "all" e com inventário
+  const kpiContrCard = document.getElementById("kpiContractedCard");
+  const kpiWasteCard = document.getElementById("kpiWasteCard");
+  if (state.tab === "all" && inventory) {
+    let contracted = 0, used = 0;
+    inventory.forEach(r => {
+      const p = prices[r.sku] || 0;
+      contracted += r.total * p;
+      used += r.assigned * p;
+    });
+    const waste = contracted - used;
+    kpiContrCard.classList.remove("hidden");
+    kpiWasteCard.classList.remove("hidden");
+    document.getElementById("kpiContracted").textContent = BRL(contracted);
+    document.getElementById("kpiContractedSub").textContent = BRL(contracted * 12) + " / ano";
+    document.getElementById("kpiWaste").textContent = BRL(waste);
+    document.getElementById("kpiWasteSub").textContent = BRL(waste * 12) + " / ano · clique para detalhar";
+  } else if (state.tab === "all") {
+    // Sem inventário, mostra desperdício de bloqueados como fallback
+    kpiContrCard.classList.add("hidden");
+    kpiWasteCard.classList.remove("hidden");
+    const blocked = list.filter(u => u.blocked);
+    const blockedCost = blocked.reduce((s, u) => s + u.monthly_cost, 0);
+    document.getElementById("kpiWaste").textContent = BRL(blockedCost);
+    document.getElementById("kpiWasteSub").textContent = `Bloqueados c/ licença · carregue o inventário para ver licenças paradas`;
+  } else {
+    kpiContrCard.classList.add("hidden");
+    kpiWasteCard.classList.add("hidden");
+  }
+
+  // KPI "sem BU" só faz sentido na aba "all"
+  const kpiUnmap = document.getElementById("kpiUnmappedCard");
+  if (state.tab === "all") {
+    kpiUnmap.classList.remove("hidden");
+    const unmapped = users.filter(u => u.bu === "Não mapeado");
+    const unmappedCost = unmapped.reduce((s, u) => s + u.monthly_cost, 0);
+    document.getElementById("kpiUnmapped").textContent = NUM(unmapped.length);
+    document.getElementById("kpiUnmappedSub").textContent = `${BRL(unmappedCost)} / mês a classificar`;
+  } else {
+    kpiUnmap.classList.add("hidden");
+  }
+}
+
+function renderAlerts() {
+  const list = usersForActiveTab();
+  const alerts = [];
+  const blocked = list.filter(u => u.blocked);
+  if (blocked.length > 0) {
+    const cost = blocked.reduce((s, u) => s + u.monthly_cost, 0);
+    alerts.push({
+      type: "danger", icon: "⚠",
+      html: `<b>${blocked.length} usuários bloqueados com licença ativa</b>${state.tab !== "all" ? ` em ${state.tab}` : ""} — custando <b>${BRL(cost)}/mês</b> (${BRL(cost*12)}/ano).`,
+      action: { label: "Filtrar e ver →", fn: "filterOnlyBlocked();" },
+    });
+  }
+  // Redundâncias (problemas reais — só danger)
+  const withRedund = list.filter(u => u.issues && u.issues.some(i => i.severity === "danger"));
+  if (withRedund.length > 0) {
+    alerts.push({
+      type: "danger", icon: "!",
+      html: `<b>${withRedund.length} usuários com licenças problemáticas</b>${state.tab !== "all" ? ` em ${state.tab}` : ""} (ex: E1 sem Teams, Basic+Teams). Filtre na tabela abaixo para exportar a lista e tratar.`,
+      action: { label: "Filtrar e ver →", fn: "filterOnlyRedundancy();" },
+    });
+  }
+  if (state.tab === "all") {
+    const unmapped = users.filter(u => u.bu === "Não mapeado");
+    if (unmapped.length > 0) {
+      const cost = unmapped.reduce((s, u) => s + u.monthly_cost, 0);
+      alerts.push({
+        type: "warn", icon: "?",
+        html: `<b>${unmapped.length} usuários sem BU definida</b>, custando ${BRL(cost)}/mês.`,
+        action: { label: "Ver não-mapeados →", fn: "switchTab('Não mapeado');" },
+      });
+    }
+    const unknown = new Set();
+    users.forEach(u => u.licenses.forEach(l => { if (!(l in prices)) unknown.add(l); }));
+    if (unknown.size > 0) {
+      alerts.push({
+        type: "info", icon: "i",
+        html: `<b>${unknown.size} SKU(s) sem preço cadastrado</b>: ${[...unknown].join(", ")}.`,
+      });
+    }
+  }
+  document.getElementById("alertBox").innerHTML = alerts.map(a => `
+    <div class="alert ${a.type}">
+      <div class="alert-icon">${a.icon}</div>
+      <div style="flex:1;">${a.html}</div>
+      ${a.action ? `<button class="alert-action" onclick="${a.action.fn}">${a.action.label}</button>` : ""}
+    </div>
+  `).join("");
+}
+
+function renderBUGrid() {
+  const agg = {};
+  users.forEach(u => {
+    if (!agg[u.bu]) agg[u.bu] = { users: 0, blocked: 0, cost: 0 };
+    agg[u.bu].users++;
+    if (u.blocked) agg[u.bu].blocked++;
+    agg[u.bu].cost += u.monthly_cost;
+  });
+  const entries = Object.entries(agg).sort((a, b) => b[1].cost - a[1].cost);
+  const total = entries.reduce((s, [, v]) => s + v.cost, 0);
+  const max = Math.max(...entries.map(([, v]) => v.cost), 1);
+
+  document.getElementById("buGrid").innerHTML = entries.map(([bu, v]) => {
+    const share = total > 0 ? (v.cost / total * 100).toFixed(1) : "0";
+    const pct = (v.cost / max * 100);
+    const isUnmapped = bu === "Não mapeado";
+    return `
+      <div class="bu-card ${isUnmapped ? 'unmapped' : ''}" onclick="switchTab('${bu.replace(/'/g, "\\'")}')">
+        <div class="bu-card-head">
+          <div class="bu-name">${bu}</div>
+          <div class="bu-share">${share}%</div>
+        </div>
+        <div class="bu-cost">${BRL(v.cost)}</div>
+        <div class="bu-meta">
+          <span>${v.users} usuários</span>
+          ${v.blocked > 0 ? `<span style="color:var(--red);">${v.blocked} bloq.</span>` : ''}
+        </div>
+        <div class="bu-progress"><div class="bu-progress-fill" style="width: ${pct}%"></div></div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderSKUs() {
+  const list = usersForActiveTab();
+  document.getElementById("skuTitle").textContent = state.tab === "all"
+    ? "Mix de licenças (SKUs)"
+    : `Licenças em ${state.tab}`;
+  const agg = {};
+  list.forEach(u => u.licenses.forEach(sku => {
+    if (!agg[sku]) agg[sku] = { count: 0 };
+    agg[sku].count++;
+  }));
+  const skuList = Object.entries(agg).map(([sku, v]) => ({
+    sku, count: v.count, price: prices[sku] || 0, total: v.count * (prices[sku] || 0),
+  })).sort((a, b) => b.total - a.total || b.count - a.count);
+
+  const target = document.getElementById("skuList");
+  if (skuList.length === 0) {
+    target.innerHTML = `<div class="empty">Nenhuma licença paga nesta BU.</div>`;
+    return;
+  }
+  target.innerHTML = skuList.map(s => `
+    <div class="sku-row" onclick="openSkuDrilldown('${s.sku.replace(/'/g, "\\'")}')">
+      <div class="sku-name">${s.sku}</div>
+      <div class="sku-num">${s.count}</div>
+      <div class="sku-num">${s.price > 0 ? BRL(s.price) : "—"}</div>
+      <div class="sku-num total">${s.total > 0 ? BRL(s.total) : "—"}</div>
+    </div>
+  `).join("");
+}
+
+// =====================================================================
+// OTIMIZAÇÃO (inventário, renovação, redundâncias)
+// =====================================================================
+function renderOptimization() {
+  const section = document.getElementById("optimizationSection");
+  if (!inventory || inventory.length === 0) {
+    section.classList.add("hidden");
+    return;
+  }
+  section.classList.remove("hidden");
+  document.getElementById("renewalDate").textContent = `Renovação em ${RENEWAL_DATE}`;
+
+  // Mostra/esconde subpanels
+  document.getElementById("optRenewal").classList.toggle("hidden", state.optTab !== "renewal");
+  document.getElementById("optInventory").classList.toggle("hidden", state.optTab !== "inventory");
+  document.getElementById("optRedundancy").classList.toggle("hidden", state.optTab !== "redundancy");
+
+  // Conta licenças removíveis (por redundância) por SKU
+  const removableBySku = {};
+  users.forEach(u => {
+    u.issues.forEach(iss => {
+      if (iss.severity === "danger" && iss.removable) {
+        removableBySku[iss.removable] = (removableBySku[iss.removable] || 0) + 1;
+      }
+    });
+  });
+
+  if (state.optTab === "renewal") renderRenewal(removableBySku);
+  else if (state.optTab === "inventory") renderInventory();
+  else if (state.optTab === "redundancy") renderRedundancy();
+}
+
+function renderRenewal(removableBySku) {
+  const paid = inventory.filter(r => (prices[r.sku] || 0) > 0);
+
+  // ===== Cálculos por SKU =====
+  let totalAtual = 0, totalRenov = 0;
+  const skuRows = paid.map(r => {
+    const sku = r.sku;
+    const pAtual = prices[sku] || 0;
+    const pNovo = newPrices[sku] || pAtual;
+    const qtdAtual = r.total;
+    const qtdRenov = (sku in RENEWAL_QUANTITIES) ? RENEWAL_QUANTITIES[sku] : r.assigned;
+    const devolucao = qtdAtual - qtdRenov;
+    const custoAtual = qtdAtual * pAtual;
+    const custoRenov = qtdRenov * pNovo;
+    totalAtual += custoAtual;
+    totalRenov += custoRenov;
+    return { sku, pAtual, pNovo, qtdAtual, qtdRenov, devolucao, custoAtual, custoRenov, assigned: r.assigned };
+  });
+
+  // ===== Rateio por BU =====
+  // Para cada SKU, contamos quantos usuários de cada BU usam, e calculamos o custo por BU
+  const buCost = {};   // bu -> custo total renovação
+  const buBreakdown = {}; // bu -> { sku -> { qtd, custo } }
+  const sobrasPorSku = {}; // sku -> { qtd, custo, qtdRenov }
+
+  skuRows.forEach(r => {
+    // Conta atribuições por BU para este SKU
+    const buAssignments = {};
+    users.forEach(u => {
+      if (u.licenses.includes(r.sku)) {
+        buAssignments[u.bu] = (buAssignments[u.bu] || 0) + 1;
+      }
+    });
+    const totalAssigned = Object.values(buAssignments).reduce((a, b) => a + b, 0);
+    // Custo atribuído por BU = qtd_bu × preço_novo
+    Object.entries(buAssignments).forEach(([bu, qtd]) => {
+      const cost = qtd * r.pNovo;
+      buCost[bu] = (buCost[bu] || 0) + cost;
+      if (!buBreakdown[bu]) buBreakdown[bu] = {};
+      buBreakdown[bu][r.sku] = { qtd, custo: cost };
+    });
+    // Sobras = qtdRenov − totalAssigned
+    const sobraQtd = Math.max(0, r.qtdRenov - totalAssigned);
+    if (sobraQtd > 0) {
+      sobrasPorSku[r.sku] = { qtd: sobraQtd, custo: sobraQtd * r.pNovo, precoNovo: r.pNovo };
+    }
+  });
+
+  const totalSobras = Object.values(sobrasPorSku).reduce((s, x) => s + x.custo, 0);
+  const totalRateado = Object.values(buCost).reduce((a, b) => a + b, 0);
+
+  // ===== Cards de resumo =====
+  const deltaVal = totalRenov - totalAtual;
+  const deltaCls = deltaVal > 0 ? 'up' : 'down';
+  const deltaSign = deltaVal > 0 ? '+' : '';
+
+  document.getElementById("scenariosGrid").innerHTML = `
+    <div class="scenario-card atual">
+      <div class="scenario-label">Cenário atual</div>
+      <div class="scenario-cost">${BRL(totalAtual)}</div>
+      <div class="scenario-annual">${BRL(totalAtual * 12)} / ano</div>
+      <div class="scenario-delta" style="background: var(--bg); color: var(--text-muted);">contrato hoje</div>
+    </div>
+    <div class="scenario-card renov-otim recomendado">
+      <div class="scenario-label">★ Renovação 09/06</div>
+      <div class="scenario-cost">${BRL(totalRenov)}</div>
+      <div class="scenario-annual">${BRL(totalRenov * 12)} / ano</div>
+      <span class="scenario-delta ${deltaCls}">${deltaSign}${BRL(deltaVal)}/mês vs Atual</span>
+    </div>
+    <div class="scenario-card">
+      <div class="scenario-label">Rateado às BUs</div>
+      <div class="scenario-cost">${BRL(totalRateado)}</div>
+      <div class="scenario-annual">${BRL(totalRateado * 12)} / ano</div>
+      <div class="scenario-delta" style="background: var(--bg); color: var(--text-muted);">${((totalRateado/totalRenov)*100).toFixed(1)}% do total</div>
+    </div>
+    <div class="scenario-card" style="border-color: var(--orange);">
+      <div class="scenario-label" style="color: var(--orange);">Sobras (não rateadas)</div>
+      <div class="scenario-cost" style="color: var(--orange);">${BRL(totalSobras)}</div>
+      <div class="scenario-annual">${BRL(totalSobras * 12)} / ano · ${BRL(totalSobras*100/Math.max(totalRenov,1)).slice(3)}% do contrato</div>
+      <div class="scenario-delta" style="background: var(--orange-bg); color: var(--orange);">decidir caso a caso</div>
+    </div>
+  `;
+
+  // ===== Tabela detalhada por SKU =====
+  let tbody = skuRows.map(r => {
+    const delta = r.custoRenov - r.custoAtual;
+    const dCls = delta > 0 ? 'delta-up' : (delta < 0 ? 'delta-down' : 'delta-zero');
+    const dSign = delta > 0 ? '+' : '';
+    const priceChange = r.pNovo === r.pAtual
+      ? ''
+      : r.pNovo > r.pAtual
+        ? `<span class="price-change-up">↑ ${((r.pNovo/r.pAtual-1)*100).toFixed(0)}%</span>`
+        : `<span class="price-change-down">↓ ${((1-r.pNovo/r.pAtual)*100).toFixed(0)}%</span>`;
+    const devClass = r.devolucao > 0 ? 'style="color: var(--orange); font-weight: 600;"' : '';
+    return `
+      <tr>
+        <td>${r.sku}</td>
+        <td>${r.qtdAtual}</td>
+        <td><b>${r.qtdRenov}</b></td>
+        <td ${devClass}>${r.devolucao > 0 ? '−' + r.devolucao : (r.devolucao < 0 ? '+' + Math.abs(r.devolucao) : '0')}</td>
+        <td>${BRL(r.pAtual)} → ${BRL(r.pNovo)} ${priceChange}</td>
+        <td>${BRL(r.custoAtual)}</td>
+        <td><b>${BRL(r.custoRenov)}</b></td>
+        <td class="${dCls}"><b>${dSign}${BRL(delta)}</b></td>
+      </tr>
+    `;
+  }).join("");
+
+  document.getElementById("renewalTable").innerHTML = `
+    <thead>
+      <tr>
+        <th>Produto</th>
+        <th>Lic. Atual</th>
+        <th>Lic. Renov.</th>
+        <th>Devolução</th>
+        <th>Preço unit.</th>
+        <th>Gasto Atual</th>
+        <th>Gasto Renov.</th>
+        <th>Δ Mensal</th>
+      </tr>
+    </thead>
+    <tbody>${tbody}</tbody>
+    <tfoot>
+      <tr>
+        <td colspan="5">TOTAL / mês</td>
+        <td>${BRL(totalAtual)}</td>
+        <td><b>${BRL(totalRenov)}</b></td>
+        <td class="${deltaVal > 0 ? 'delta-up' : 'delta-down'}"><b>${deltaSign}${BRL(deltaVal)}</b></td>
+      </tr>
+      <tr>
+        <td colspan="5">TOTAL / ano</td>
+        <td>${BRL(totalAtual * 12)}</td>
+        <td><b>${BRL(totalRenov * 12)}</b></td>
+        <td class="${deltaVal > 0 ? 'delta-up' : 'delta-down'}"><b>${deltaSign}${BRL(deltaVal * 12)}</b></td>
+      </tr>
+    </tfoot>
+  `;
+
+  // ===== Rateio por BU (cards clicáveis) =====
+  const buEntries = Object.entries(buCost).sort((a, b) => b[1] - a[1]);
+  let buHtml = `
+    <div style="font-size: 13px; font-weight: 600; margin: 24px 0 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">
+      Rateio por BU (custos atribuídos)
+    </div>
+    <div class="bu-grid">
+  `;
+  buEntries.forEach(([bu, cost]) => {
+    const pct = (cost / totalRenov * 100).toFixed(1);
+    const userCount = users.filter(u => u.bu === bu).length;
+    buHtml += `
+      <div class="bu-card" onclick='showBURenewalDetail(${JSON.stringify(bu)}, ${JSON.stringify(buBreakdown[bu] || {})})'>
+        <div class="bu-card-head">
+          <div class="bu-name">${bu}</div>
+          <div class="bu-share">${pct}%</div>
+        </div>
+        <div class="bu-cost">${BRL(cost)}</div>
+        <div class="bu-meta">
+          <span>${userCount} usuários</span>
+          <span>${BRL(cost*12)}/ano</span>
+        </div>
+        <div class="bu-progress"><div class="bu-progress-fill" style="width: ${pct}%"></div></div>
+      </div>
+    `;
+  });
+  // Card de Sobras
+  if (totalSobras > 0) {
+    const pctS = (totalSobras / totalRenov * 100).toFixed(1);
+    buHtml += `
+      <div class="bu-card unmapped" onclick='showSobrasDetail(${JSON.stringify(sobrasPorSku)})'>
+        <div class="bu-card-head">
+          <div class="bu-name" style="color: var(--orange);">⚠ Sobras</div>
+          <div class="bu-share" style="background: var(--orange-bg); color: var(--orange);">${pctS}%</div>
+        </div>
+        <div class="bu-cost" style="color: var(--orange);">${BRL(totalSobras)}</div>
+        <div class="bu-meta">
+          <span>licenças s/ atribuição</span>
+          <span>${BRL(totalSobras*12)}/ano</span>
+        </div>
+        <div class="bu-progress"><div class="bu-progress-fill" style="width: ${pctS}%; background: var(--orange);"></div></div>
+      </div>
+    `;
+  }
+  buHtml += `</div>`;
+
+  // Anexa o rateio depois da tabela
+  const existing = document.getElementById("buRateioBlock");
+  if (existing) existing.remove();
+  const block = document.createElement("div");
+  block.id = "buRateioBlock";
+  block.innerHTML = buHtml;
+  document.getElementById("renewalTable").parentElement.parentElement.appendChild(block);
+}
+
+// Modal: detalhe de uma BU na renovação
+function showBURenewalDetail(bu, breakdown) {
+  const entries = Object.entries(breakdown).sort((a, b) => b[1].custo - a[1].custo);
+  const total = entries.reduce((s, [, v]) => s + v.custo, 0);
+  document.getElementById("modalTitle").innerHTML = `${bu} <span style="font-size:13px; color:var(--text-muted); font-weight:400;">— rateio na renovação</span>`;
+  document.getElementById("modalBody").innerHTML = `
+    <div style="background: var(--pink-bg); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+      <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">TOTAL MENSAL ATRIBUÍDO</div>
+      <div style="font-size: 24px; font-weight: 700; color: var(--pink-dark);">${BRL(total)}</div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${BRL(total * 12)} / ano · com preços de renovação</div>
+    </div>
+    <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Quebra por licença</div>
+    <table style="width: 100%; font-size: 13px;">
+      <thead>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <th style="text-align:left; padding: 8px 0; color: var(--text-muted); font-weight: 600;">Licença</th>
+          <th style="text-align:right; padding: 8px 0; color: var(--text-muted); font-weight: 600;">Qtd</th>
+          <th style="text-align:right; padding: 8px 0; color: var(--text-muted); font-weight: 600;">Custo/mês</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${entries.map(([sku, v]) => `
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 10px 0;">${sku}</td>
+            <td style="text-align: right; padding: 10px 0; font-variant-numeric: tabular-nums;">${v.qtd}</td>
+            <td style="text-align: right; padding: 10px 0; font-weight: 600; font-variant-numeric: tabular-nums;">${BRL(v.custo)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+  document.getElementById("modal").classList.add("show");
+}
+
+// Modal: detalhe das sobras
+function showSobrasDetail(sobras) {
+  const entries = Object.entries(sobras).sort((a, b) => b[1].custo - a[1].custo);
+  const total = entries.reduce((s, [, v]) => s + v.custo, 0);
+  document.getElementById("modalTitle").innerHTML = `⚠ Sobras <span style="font-size:13px; color:var(--text-muted); font-weight:400;">— licenças sem atribuição</span>`;
+  document.getElementById("modalBody").innerHTML = `
+    <div style="background: var(--orange-bg); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+      <div style="font-size: 11px; color: var(--orange); margin-bottom: 4px;">TOTAL SEM RATEIO</div>
+      <div style="font-size: 24px; font-weight: 700; color: var(--orange);">${BRL(total)}</div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${BRL(total * 12)} / ano</div>
+    </div>
+    <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
+      Licenças que estarão contratadas após a renovação mas que <b>ainda não foram atribuídas a um usuário</b>. Decida caso a caso: usar para novas contratações ou negociar devolução.
+    </div>
+    <table style="width: 100%; font-size: 13px;">
+      <thead>
+        <tr style="border-bottom: 1px solid var(--border);">
+          <th style="text-align:left; padding: 8px 0; color: var(--text-muted); font-weight: 600;">Licença</th>
+          <th style="text-align:right; padding: 8px 0; color: var(--text-muted); font-weight: 600;">Qtd sobrando</th>
+          <th style="text-align:right; padding: 8px 0; color: var(--text-muted); font-weight: 600;">Custo/mês</th>
+          <th style="text-align:right; padding: 8px 0; color: var(--text-muted); font-weight: 600;">Custo/ano</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${entries.map(([sku, v]) => `
+          <tr style="border-bottom: 1px solid var(--border);">
+            <td style="padding: 10px 0;">${sku}</td>
+            <td style="text-align: right; padding: 10px 0; font-variant-numeric: tabular-nums;">${v.qtd}</td>
+            <td style="text-align: right; padding: 10px 0; font-weight: 600; color: var(--orange); font-variant-numeric: tabular-nums;">${BRL(v.custo)}</td>
+            <td style="text-align: right; padding: 10px 0; color: var(--text-muted); font-variant-numeric: tabular-nums;">${BRL(v.custo*12)}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+  document.getElementById("modal").classList.add("show");
+}
+
+function renderInventory() {
+  const paid = inventory.filter(r => (prices[r.sku] || 0) > 0);
+  paid.sort((a, b) => {
+    const wA = (a.total - a.assigned) * (prices[a.sku] || 0);
+    const wB = (b.total - b.assigned) * (prices[b.sku] || 0);
+    return wB - wA;
+  });
+
+  let totalContracted = 0, totalUsed = 0;
+  document.getElementById("inventoryList").innerHTML = paid.map(r => {
+    const p = prices[r.sku] || 0;
+    const unused = r.total - r.assigned;
+    const contracted = r.total * p;
+    const used = r.assigned * p;
+    const waste = unused * p;
+    totalContracted += contracted;
+    totalUsed += used;
+    const pct = r.total > 0 ? (r.assigned / r.total * 100) : 0;
+    return `
+      <div class="inv-row">
+        <div>
+          <div class="inv-sku-name">${r.sku}</div>
+          <div class="inv-sku-meta">${r.assigned} usadas de ${r.total} contratadas · ${BRL(p)} por licença</div>
+        </div>
+        <div class="inv-bar-wrap">
+          <div class="inv-bar-used" style="width: ${pct}%;"></div>
+          <div class="inv-bar-label">${pct.toFixed(0)}% em uso</div>
+        </div>
+        <div>
+          <div class="inv-waste ${unused === 0 ? 'zero' : ''}">${unused === 0 ? '✓ 100%' : '−' + BRL(waste) + '/mês'}</div>
+          <div class="inv-waste-sub">${unused} sobrando${unused > 0 ? ' · ' + BRL(waste*12) + '/ano' : ''}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  const totalWaste = totalContracted - totalUsed;
+  document.getElementById("invTotalContracted").textContent = BRL(totalContracted) + "/mês";
+  document.getElementById("invTotalUsed").textContent = BRL(totalUsed) + "/mês";
+  document.getElementById("invTotalWaste").textContent = BRL(totalWaste) + "/mês = " + BRL(totalWaste * 12) + "/ano";
+}
+
+function renderRedundancy() {
+  // Agrupa por tipo de issue
+  const groups = {};
+  users.forEach(u => {
+    u.issues.forEach(iss => {
+      const key = iss.description;
+      if (!groups[key]) groups[key] = { severity: iss.severity, removable: iss.removable, users: [] };
+      groups[key].users.push(u);
+    });
+  });
+  const entries = Object.entries(groups).sort((a, b) => {
+    if (a[1].severity !== b[1].severity) return a[1].severity === "danger" ? -1 : 1;
+    return b[1].users.length - a[1].users.length;
+  });
+
+  if (entries.length === 0) {
+    document.getElementById("redundancyList").innerHTML = `
+      <div style="text-align: center; padding: 40px; color: var(--green);">
+        <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
+        <div>Nenhuma redundância detectada — configuração das licenças está limpa.</div>
+      </div>
+    `;
+    return;
+  }
+
+  document.getElementById("redundancyList").innerHTML = entries.map(([desc, g]) => {
+    const sku = g.removable;
+    const unitPrice = sku ? (prices[sku] || 0) : 0;
+    const totalCost = g.users.length * unitPrice;
+    return `
+      <div class="issue-card ${g.severity === 'info' ? 'info' : ''}">
+        <div class="issue-icon">${g.severity === 'info' ? 'i' : '!'}</div>
+        <div class="issue-text">
+          <b>${desc}</b>
+          <div class="issue-meta">${g.users.length} usuário${g.users.length === 1 ? '' : 's'} afetado${g.users.length === 1 ? '' : 's'}${sku ? ` · removível: ${sku}` : ' · sem ação automática'}</div>
+        </div>
+        <div class="issue-amount">
+          ${totalCost > 0 ? `−${BRL(totalCost)}` : '—'}
+          <div class="issue-amount-sub">${totalCost > 0 ? BRL(totalCost * 12) + '/ano' : g.severity === 'info' ? 'informativo' : 'verificar config'}</div>
+        </div>
+        ${g.users.length > 0 ? `<button class="btn" onclick='showRedundancyUsers(${JSON.stringify(g.users.map(u=>u.email))})'>Ver usuários</button>` : ''}
+      </div>
+    `;
+  }).join("");
+}
+
+function showRedundancyUsers(emails) {
+  const list = users.filter(u => emails.includes(u.email));
+  const cost = list.reduce((s, u) => s + u.monthly_cost, 0);
+  document.getElementById("modalTitle").innerHTML = `${list.length} usuários afetados <span style="font-size:13px; color:var(--text-muted); font-weight:400;">— ${BRL(cost)}/mês total</span>`;
+  document.getElementById("modalBody").innerHTML = `
+    <div style="background: var(--bg); border-radius: 10px; padding: 4px 14px;">
+      ${list.sort((a,b) => b.monthly_cost - a.monthly_cost).map(u => `
+        <div style="padding: 12px 0; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-weight: 500; font-size: 13px;">${u.name || u.email}</div>
+            <div style="font-size: 11px; color: var(--text-muted);">${u.email} · ${u.bu}</div>
+            <div style="margin-top: 4px;">${u.licenses.map(l => `<span class="lic-pill">${l}</span>`).join('')}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-weight: 700; color: var(--pink-dark);">${BRL(u.monthly_cost)}</div>
+            <button class="btn" style="margin-top: 6px; padding: 4px 10px; font-size: 11px;" onclick="closeModal(); openUserDrilldown('${u.email}')">Detalhes</button>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
+  document.getElementById("modal").classList.add("show");
+}
+
+// =====================================================================
+// TABELA DE USUÁRIOS
+// =====================================================================
+function applyFilters() {
+  let rows = usersForActiveTab().slice();
+  if (state.blocked) rows = rows.filter(u => u.blocked);
+  if (state.redundancy) {
+    rows = rows.filter(u => u.issues && u.issues.some(i => i.severity === "danger"));
+  }
+  if (state.search) {
+    const q = state.search.toLowerCase();
+    rows = rows.filter(u =>
+      u.name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      (u.department || "").toLowerCase().includes(q) ||
+      (u.gestor || "").toLowerCase().includes(q) ||
+      (u.cc || "").toLowerCase().includes(q) ||
+      u.licenses.some(l => l.toLowerCase().includes(q))
+    );
+  }
+  const k = state.sortKey, dir = state.sortDir === "asc" ? 1 : -1;
+  rows.sort((a, b) => {
+    let av = a[k], bv = b[k];
+    if (k === "licenses") { av = a.license_count; bv = b.license_count; }
+    if (typeof av === "string") return av.localeCompare(bv) * dir;
+    return ((av || 0) - (bv || 0)) * dir;
+  });
+  return rows;
+}
+
+function renderUsers() {
+  document.getElementById("usersTitle").textContent = state.tab === "all"
+    ? "Usuários"
+    : `Usuários em ${state.tab}`;
+  const rows = applyFilters();
+  const tbody = document.querySelector("#usersTable tbody");
+  const totalPages = Math.max(1, Math.ceil(rows.length / state.pageSize));
+  if (state.page > totalPages) state.page = totalPages;
+  const start = (state.page - 1) * state.pageSize;
+  const slice = rows.slice(start, start + state.pageSize);
+
+  if (slice.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty">Nenhum usuário com esses filtros.</td></tr>`;
+  } else {
+    tbody.innerHTML = slice.map(u => `
+      <tr class="${u.blocked ? 'blocked' : ''}" onclick="openUserDrilldown('${u.email}')">
+        <td><b>${u.name || '—'}</b></td>
+        <td style="color: var(--text-muted); font-size: 12px;">${u.email}</td>
+        <td><span class="bu-tag ${u.bu === 'Não mapeado' ? 'empty' : ''}">${u.bu}</span></td>
+        <td style="color: var(--text-muted);">${u.cc || '—'}</td>
+        <td style="color: var(--text-muted);">${u.gestor || '—'}</td>
+        <td>${u.licenses.map(l => `<span class="lic-pill">${l}</span>`).join('') || '<span style="color: var(--text-dim);">só gratuitas</span>'}</td>
+        <td class="num"><b>${BRL(u.monthly_cost)}</b></td>
+      </tr>
+    `).join("");
+  }
+  document.querySelectorAll("th[data-sort]").forEach(th => {
+    th.classList.remove("sorted", "sorted-asc");
+    if (th.dataset.sort === state.sortKey) {
+      th.classList.add(state.sortDir === "asc" ? "sorted-asc" : "sorted");
+    }
+  });
+  const total = rows.reduce((s, u) => s + u.monthly_cost, 0);
+  document.getElementById("pagInfo").textContent =
+    `${rows.length} usuários · página ${state.page} de ${totalPages} · ${BRL(total)}/mês`;
+  document.getElementById("usersFilterInfo").textContent =
+    (!state.blocked && !state.redundancy && !state.search) ? "" : `${rows.length} resultados filtrados`;
+  document.getElementById("pagPrev").disabled = state.page <= 1;
+  document.getElementById("pagNext").disabled = state.page >= totalPages;
+  // Atualiza contador no botão Exportar
+  const btnExp = document.getElementById("btnExport");
+  if (btnExp) btnExp.textContent = `⬇ Exportar CSV (${rows.length})`;
+}
+
+// =====================================================================
+// DRILLDOWNS
+// =====================================================================
+function openSkuDrilldown(sku) {
+  const list = usersForActiveTab().filter(u => u.licenses.includes(sku));
+  const price = prices[sku] || 0;
+  const total = list.length * price;
+  const buAgg = {};
+  list.forEach(u => buAgg[u.bu] = (buAgg[u.bu] || 0) + 1);
+  const buList = Object.entries(buAgg).sort((a, b) => b[1] - a[1]);
+
+  document.getElementById("modalTitle").innerHTML = `${sku} <span style="font-size:13px; color:var(--text-muted); font-weight:400;">— ${list.length} licenças</span>`;
+  document.getElementById("modalBody").innerHTML = `
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom: 20px;">
+      <div style="background: var(--pink-bg); border-radius: 10px; padding: 14px;">
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">QUANTIDADE</div>
+        <div style="font-size: 20px; font-weight: 700; color: var(--pink-dark);">${list.length}</div>
+      </div>
+      <div style="background: var(--bg); border-radius: 10px; padding: 14px;">
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">PREÇO UNIT.</div>
+        <div style="font-size: 20px; font-weight: 700;">${price > 0 ? BRL(price) : '—'}</div>
+      </div>
+      <div style="background: ${total > 0 ? 'var(--pink-light)' : 'var(--bg)'}; border-radius: 10px; padding: 14px;">
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">TOTAL/MÊS</div>
+        <div style="font-size: 20px; font-weight: 700; color: ${total > 0 ? 'var(--pink-dark)' : 'var(--text)'};">${BRL(total)}</div>
+      </div>
+    </div>
+    ${state.tab === "all" ? `
+    <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Distribuição por BU</div>
+    <div style="background: var(--bg); border-radius: 10px; padding: 4px 14px; margin-bottom: 20px;">
+      ${buList.map(([bu, count]) => {
+        const pct = (count / list.length * 100).toFixed(1);
+        return `
+          <div style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; font-size: 13px; margin-bottom: 6px;">
+              <span><b>${bu}</b></span>
+              <span>${count} (${pct}%)</span>
+            </div>
+            <div style="height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;">
+              <div style="height: 100%; background: var(--pink); width: ${pct}%;"></div>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+    ` : ''}
+    <button class="btn btn-primary" onclick="closeModal(); filterBySearch('${sku.replace(/'/g, "\\'")}'); scrollToUsers();">Ver usuários com esta licença →</button>
+  `;
+  document.getElementById("modal").classList.add("show");
+}
+
+function openUserDrilldown(email) {
+  const u = users.find(x => x.email === email);
+  if (!u) return;
+  document.getElementById("modalTitle").innerHTML = `${u.name || u.email} ${u.blocked ? '<span style="background:var(--red-bg); color:var(--red); padding:3px 10px; border-radius:999px; font-size:11px; margin-left: 8px;">BLOQUEADO</span>' : ''}`;
+  document.getElementById("modalBody").innerHTML = `
+    <table style="width:100%; font-size: 13px;">
+      <tr><td style="padding: 8px 0; color: var(--text-muted); width: 160px;">E-mail</td><td>${u.email}</td></tr>
+      <tr><td style="padding: 8px 0; color: var(--text-muted);">BU / Empresa</td><td><span class="bu-tag ${u.bu === 'Não mapeado' ? 'empty' : ''}">${u.bu}</span></td></tr>
+      <tr><td style="padding: 8px 0; color: var(--text-muted);">Centro de Custo</td><td>${u.cc || '<span style="color: var(--text-dim);">não definido</span>'}</td></tr>
+      <tr><td style="padding: 8px 0; color: var(--text-muted);">Gestor</td><td>${u.gestor || '<span style="color: var(--text-dim);">não definido</span>'}</td></tr>
+      <tr><td style="padding: 8px 0; color: var(--text-muted);">Departamento (M365)</td><td>${u.department || '—'}</td></tr>
+      <tr><td style="padding: 8px 0; color: var(--text-muted);">Cargo (M365)</td><td>${u.title || '—'}</td></tr>
+      ${u.obs ? `<tr><td style="padding: 8px 0; color: var(--text-muted); vertical-align: top;">Observações</td><td>${u.obs}</td></tr>` : ''}
+    </table>
+    <div style="margin-top: 20px;">
+      <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Licenças pagas (${u.licenses.length})</div>
+      <div style="background: var(--bg); border-radius: 10px; padding: 4px 14px;">
+        ${u.licenses.length === 0 ? `<div style="padding: 14px 0; color: var(--text-dim); font-size: 13px;">Sem licenças pagas — só gratuitas.</div>` :
+        u.licenses.map(l => `
+          <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;">
+            <span>${l}</span>
+            <span style="font-weight: 600;">${BRL(prices[l] || 0)}</span>
+          </div>
+        `).join("")}
+        <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 14px;">
+          <span><b>Total</b></span>
+          <span style="font-weight: 700; color: var(--pink-dark);">${BRL(u.monthly_cost)}/mês</span>
+        </div>
+      </div>
+      ${u.free_licenses && u.free_licenses.length > 0 ? `
+        <div style="font-size: 13px; font-weight: 600; margin-top: 16px; margin-bottom: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Licenças gratuitas (${u.free_licenses.length})</div>
+        <div style="background: var(--bg); border-radius: 10px; padding: 4px 14px;">
+          ${u.free_licenses.map(l => `
+            <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;">
+              <span style="color: var(--text-muted);">${l}</span>
+              <span style="color: var(--text-dim);">gratuita</span>
+            </div>
+          `).join("")}
+        </div>
+      ` : ''}
+    </div>
+  `;
+  document.getElementById("modal").classList.add("show");
+}
+
+function closeModal() { document.getElementById("modal").classList.remove("show"); }
+document.getElementById("modal").addEventListener("click", e => {
+  if (e.target.id === "modal") closeModal();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+// =====================================================================
+// FILTROS LOCAIS DA TABELA
+// =====================================================================
+function toggleBlocked() {
+  state.blocked = !state.blocked;
+  document.getElementById("chipBlocked").classList.toggle("active", state.blocked);
+  state.page = 1;
+  renderUsers();
+}
+function toggleRedundancy() {
+  state.redundancy = !state.redundancy;
+  document.getElementById("chipRedundancy").classList.toggle("active", state.redundancy);
+  state.page = 1;
+  renderUsers();
+}
+
+// Helpers para aplicar UM filtro só e ir pra tabela
+function filterOnlyBlocked() {
+  state.blocked = true;
+  state.redundancy = false;
+  state.search = "";
+  document.getElementById("searchInput").value = "";
+  document.getElementById("chipBlocked").classList.add("active");
+  document.getElementById("chipRedundancy").classList.remove("active");
+  state.page = 1;
+  renderUsers();
+  scrollToUsers();
+}
+function filterOnlyRedundancy() {
+  state.redundancy = true;
+  state.blocked = false;
+  state.search = "";
+  document.getElementById("searchInput").value = "";
+  document.getElementById("chipRedundancy").classList.add("active");
+  document.getElementById("chipBlocked").classList.remove("active");
+  state.page = 1;
+  renderUsers();
+  scrollToUsers();
+}
+function filterBySearch(text) {
+  state.search = text;
+  document.getElementById("searchInput").value = text;
+  state.page = 1;
+  renderUsers();
+}
+function scrollToUsers() {
+  document.getElementById("usersSection").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+document.getElementById("searchInput").addEventListener("input", e => {
+  state.search = e.target.value;
+  state.page = 1;
+  renderUsers();
+});
+document.getElementById("chipBlocked").addEventListener("click", toggleBlocked);
+document.getElementById("chipRedundancy").addEventListener("click", toggleRedundancy);
+document.querySelectorAll("th[data-sort]").forEach(th => {
+  th.addEventListener("click", () => {
+    const k = th.dataset.sort;
+    if (state.sortKey === k) state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+    else {
+      state.sortKey = k;
+      state.sortDir = (k === "name" || k === "email" || k === "bu" || k === "cc" || k === "gestor") ? "asc" : "desc";
+    }
+    renderUsers();
+  });
+});
+document.getElementById("pagPrev").addEventListener("click", () => { state.page--; renderUsers(); });
+document.getElementById("pagNext").addEventListener("click", () => { state.page++; renderUsers(); });
+
+// Sub-tabs de otimização
+document.querySelectorAll(".sub-tab").forEach(t => {
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".sub-tab").forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    state.optTab = t.dataset.optTab;
+    renderOptimization();
+  });
+});
+
+// Switch programático para aba de otimização + scroll
+function switchOptTab(tab) {
+  state.optTab = tab;
+  document.querySelectorAll(".sub-tab").forEach(x => {
+    x.classList.toggle("active", x.dataset.optTab === tab);
+  });
+  renderOptimization();
+  const section = document.getElementById("optimizationSection");
+  if (section && !section.classList.contains("hidden")) {
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+// =====================================================================
+// EXPORT CSV
+// =====================================================================
+function downloadCSV(filename, rows) {
+  if (!rows.length) {
+    alert("Nada para exportar.");
+    return;
+  }
+  // Usa ; como delimitador (padrão Excel-BR)
+  const escape = v => {
+    if (v == null) return "";
+    const s = String(v);
+    if (s.includes(";") || s.includes('"') || s.includes("\n")) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  };
+  const headers = Object.keys(rows[0]);
+  const lines = [headers.join(";")];
+  rows.forEach(r => {
+    lines.push(headers.map(h => escape(r[h])).join(";"));
+  });
+  // BOM para Excel ler UTF-8 corretamente
+  const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const today = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `${filename}_${today}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Exporta a tabela de usuários atual (respeitando aba de BU e filtros)
+function exportUsersCSV() {
+  const rows = applyFilters().map(u => {
+    const dangers = (u.issues || []).filter(i => i.severity === "danger");
+    const economy = dangers.reduce((s, i) => s + (i.removable ? (prices[i.removable] || 0) : 0), 0);
+    return {
+      "Nome": u.name,
+      "E-mail": u.email,
+      "BU": u.bu,
+      "Status": u.blocked ? "Bloqueado" : "Ativo",
+      "Departamento": u.department,
+      "Cargo": u.title,
+      "Licenças pagas": u.licenses.join(" + "),
+      "Licenças gratuitas": (u.free_licenses || []).join(" + "),
+      "Custo mensal (R$)": u.monthly_cost.toFixed(2).replace(".", ","),
+      "Custo anual (R$)": (u.monthly_cost * 12).toFixed(2).replace(".", ","),
+      "Problemas detectados": dangers.map(i => i.description).join(" | ") || "—",
+      "Licenças removíveis": dangers.map(i => i.removable).filter(Boolean).join(" | ") || "—",
+      "Economia se corrigir (R$/mês)": economy ? economy.toFixed(2).replace(".", ",") : "—",
+    };
+  });
+  // Define nome do arquivo baseado nos filtros ativos
+  let scope = state.tab === "all" ? "todos" : state.tab.toLowerCase().replace(/\s+/g, "-");
+  if (state.blocked) scope += "_bloqueados";
+  if (state.redundancy) scope += "_redundancias";
+  if (state.search) scope += "_busca";
+  downloadCSV(`usuarios_${scope}`, rows);
+}
+
+// Exporta usuários com redundâncias / problemas
+function exportRedundanciesCSV() {
+  const rows = [];
+  users.forEach(u => {
+    if (!u.issues || u.issues.length === 0) return;
+    u.issues.forEach(iss => {
+      const economy = iss.removable ? (prices[iss.removable] || 0) : 0;
+      rows.push({
+        "Nome": u.name,
+        "E-mail": u.email,
+        "BU": u.bu,
+        "Status": u.blocked ? "Bloqueado" : "Ativo",
+        "Gravidade": iss.severity === "danger" ? "Alta" : "Informativo",
+        "Problema": iss.description,
+        "Licença removível": iss.removable || "—",
+        "Economia mensal se removida (R$)": economy ? economy.toFixed(2).replace(".", ",") : "—",
+        "Economia anual (R$)": economy ? (economy * 12).toFixed(2).replace(".", ",") : "—",
+        "Licenças atuais": u.licenses.join(" + "),
+        "Custo atual mensal (R$)": u.monthly_cost.toFixed(2).replace(".", ","),
+      });
+    });
+  });
+  // Ordena: gravidade alta primeiro, depois por economia maior
+  rows.sort((a, b) => {
+    if (a.Gravidade !== b.Gravidade) return a.Gravidade === "Alta" ? -1 : 1;
+    const ea = parseFloat((a["Economia mensal se removida (R$)"] || "0").replace(",", ".")) || 0;
+    const eb = parseFloat((b["Economia mensal se removida (R$)"] || "0").replace(",", ".")) || 0;
+    return eb - ea;
+  });
+  downloadCSV("usuarios_com_redundancias", rows);
+}
+</script>
+</body>
+</html>
