@@ -231,20 +231,6 @@
   .bu-meta { display: flex; gap: 14px; font-size: 12px; color: var(--text-muted); margin-top: 8px; }
   .bu-progress { height: 4px; background: var(--border); border-radius: 2px; margin-top: 12px; overflow: hidden; }
   .bu-progress-fill { height: 100%; background: var(--pink); border-radius: 2px; transition: width 0.4s; }
-
-  /* Badge de economia/aumento no card de BU */
-  .bu-savings {
-    margin-top: 10px;
-    padding: 6px 10px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    text-align: center;
-  }
-  .bu-savings.savings-pos { background: var(--green-bg); color: var(--green); }
-  .bu-savings.savings-neg { background: var(--red-bg); color: var(--red); }
-  .bu-savings.savings-zero { background: var(--bg); color: var(--text-muted); }
   .bu-card.unmapped { border-style: dashed; }
   .bu-card.unmapped .bu-name { color: var(--orange); }
   .bu-card.unmapped .bu-progress-fill { background: var(--orange); }
@@ -1607,9 +1593,8 @@ function renderRenewal(removableBySku) {
 
   // ===== Rateio por BU =====
   // Para cada SKU, contamos quantos usuários de cada BU usam, e calculamos o custo por BU
-  const buCost = {};   // bu -> custo total renovação (preços novos)
-  const buCostAtual = {}; // bu -> custo atual (mesma qtd, preços atuais)
-  const buBreakdown = {}; // bu -> { sku -> { qtd, custo, custoAtual } }
+  const buCost = {};   // bu -> custo total renovação
+  const buBreakdown = {}; // bu -> { sku -> { qtd, custo } }
   const sobrasPorSku = {}; // sku -> { qtd, custo, qtdRenov }
 
   skuRows.forEach(r => {
@@ -1621,14 +1606,12 @@ function renderRenewal(removableBySku) {
       }
     });
     const totalAssigned = Object.values(buAssignments).reduce((a, b) => a + b, 0);
-    // Custo atribuído por BU = qtd_bu × preço_novo (e × preço_atual pra comparação)
+    // Custo atribuído por BU = qtd_bu × preço_novo
     Object.entries(buAssignments).forEach(([bu, qtd]) => {
-      const costNovo = qtd * r.pNovo;
-      const costAtual = qtd * r.pAtual;
-      buCost[bu] = (buCost[bu] || 0) + costNovo;
-      buCostAtual[bu] = (buCostAtual[bu] || 0) + costAtual;
+      const cost = qtd * r.pNovo;
+      buCost[bu] = (buCost[bu] || 0) + cost;
       if (!buBreakdown[bu]) buBreakdown[bu] = {};
-      buBreakdown[bu][r.sku] = { qtd, custo: costNovo, custoAtual };
+      buBreakdown[bu][r.sku] = { qtd, custo: cost };
     });
     // Sobras = qtdRenov − totalAssigned
     const sobraQtd = Math.max(0, r.qtdRenov - totalAssigned);
@@ -1738,11 +1721,6 @@ function renderRenewal(removableBySku) {
   buEntries.forEach(([bu, cost]) => {
     const pct = (cost / totalRenov * 100).toFixed(1);
     const userCount = users.filter(u => u.bu === bu).length;
-    const costAtual = buCostAtual[bu] || 0;
-    const economia = costAtual - cost;  // positivo = economia, negativo = aumento
-    const economiaCls = economia > 0 ? 'savings-pos' : (economia < 0 ? 'savings-neg' : 'savings-zero');
-    const economiaSign = economia > 0 ? '−' : (economia < 0 ? '+' : '');
-    const economiaLabel = economia > 0 ? 'economia' : (economia < 0 ? 'aumento' : 'sem mudança');
     buHtml += `
       <div class="bu-card" onclick='showBURenewalDetail(${JSON.stringify(bu)}, ${JSON.stringify(buBreakdown[bu] || {})})'>
         <div class="bu-card-head">
@@ -1753,10 +1731,6 @@ function renderRenewal(removableBySku) {
         <div class="bu-meta">
           <span>${userCount} usuários</span>
           <span>${BRL(cost*12)}/ano</span>
-        </div>
-        <div class="bu-savings ${economiaCls}">
-          ${economia === 0 ? 'Sem variação no preço'
-            : `${economiaSign}${BRL(Math.abs(economia))}/mês ${economiaLabel} <span style="opacity:0.7;">· ${economiaSign}${BRL(Math.abs(economia)*12)}/ano</span>`}
         </div>
         <div class="bu-progress"><div class="bu-progress-fill" style="width: ${pct}%"></div></div>
       </div>
