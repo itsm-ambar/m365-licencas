@@ -797,24 +797,24 @@ document.addEventListener("DOMContentLoaded", () => {
     <section id="optimizationSection" class="hidden">
       <div class="section-card">
         <div class="section-head">
-          <div class="section-title"><span class="section-title-bar"></span>Otimização & Renovação</div>
-          <div class="section-hint" id="renewalDate">Renovação em 09/06</div>
+          <div class="section-title"><span class="section-title-bar"></span>Custos & Otimização</div>
+          <div class="section-hint">Preços vigentes desde 09/06/2026</div>
         </div>
 
         <div class="sub-tabs" id="optTabs">
-          <button class="sub-tab active" data-opt-tab="renewal">Renovação 09/06</button>
+          <button class="sub-tab active" data-opt-tab="costs">Custos & rateio</button>
           <button class="sub-tab" data-opt-tab="inventory">Inventário (contratado vs uso)</button>
           <button class="sub-tab" data-opt-tab="redundancy">Redundâncias por usuário</button>
         </div>
 
-        <!-- Renewal -->
-        <div id="optRenewal" class="opt-panel">
+        <!-- Custos -->
+        <div id="optCosts" class="opt-panel">
           <div class="scenarios-grid" id="scenariosGrid"></div>
           <div style="overflow-x: auto;">
-            <table class="renewal-table" id="renewalTable"></table>
+            <table class="renewal-table" id="costsTable"></table>
           </div>
           <div style="margin-top: 14px; font-size: 12px; color: var(--text-muted); line-height: 1.6;">
-            <b style="color: var(--text);">Como ler:</b> "Renovação mantendo qtd" usa os novos preços com o mesmo número de licenças contratadas hoje. "Renovação otimizada" usa só o que está atribuído. "Ultra-otimizada" desconta também redundâncias (Basic+Teams etc).
+            <b style="color: var(--text);">Como ler:</b> gasto = licenças contratadas × preço unitário vigente. O rateio por BU considera as licenças atribuídas a cada usuário; o que está contratado e não atribuído aparece como sobra.
           </div>
         </div>
 
@@ -896,12 +896,13 @@ document.addEventListener("DOMContentLoaded", () => {
 // =====================================================================
 // DADOS DE REFERÊNCIA
 // =====================================================================
+// Preços unitários mensais vigentes (após a renovação de 09/06/2026)
 let DEFAULT_PRICES = {
   "Microsoft 365 Empresas Basic": 30.87,
   "Microsoft 365 Empresas": 77.28,
-  "Microsoft Teams Enterprise": 32.48,
-  "Office 365 E1 (sem Teams)": 47.93,
-  "Office 365 E3 (sem Teams)": 128.23,
+  "Microsoft Teams Enterprise": 52.89,
+  "Office 365 E1 (sem Teams)": 41.99,
+  "Office 365 E3 (sem Teams)": 89.27,
   "Power BI Pro": 86.57,
   "Power Automate Premium": 86.93,
   "OneDrive for Business (Plan 2)": 61.85,
@@ -938,19 +939,6 @@ const FREE_SKUS = new Set([
   "Teams Premium (para Departamentos)",
 ]);
 
-// Preços DE RENOVAÇÃO padrão (a partir de 09/06) — usados se a planilha não trouxer
-const NEW_PRICES_DEFAULT = {
-  "Microsoft 365 Empresas Basic": 30.87,
-  "Microsoft 365 Empresas": 77.28,
-  "Microsoft Teams Enterprise": 52.89,         // SUBIU
-  "Office 365 E1 (sem Teams)": 41.99,          // CAIU
-  "Office 365 E3 (sem Teams)": 89.27,          // CAIU
-  "Power BI Pro": 86.57,
-  "Power Automate Premium": 86.93,
-  "OneDrive for Business (Plan 2)": 61.85,
-};
-const RENEWAL_DATE = "09/06/2026";
-
 // =====================================================================
 // QUANTIDADE CONTRATADA (embutida) — edite aqui quando comprar/devolver licenças
 // O CSV de inventário (opcional) sobrescreve esses valores se carregado.
@@ -958,28 +946,13 @@ const RENEWAL_DATE = "09/06/2026";
 const DEFAULT_INVENTORY = [
   { sku: "Microsoft 365 Empresas Basic",       total: 238 },
   { sku: "Microsoft 365 Empresas",              total: 62 },
-  { sku: "Microsoft Teams Enterprise",         total: 155 },
-  { sku: "Office 365 E1 (sem Teams)",          total: 151 },
-  { sku: "Office 365 E3 (sem Teams)",           total: 27 },
+  { sku: "Microsoft Teams Enterprise",         total: 100 },
+  { sku: "Office 365 E1 (sem Teams)",           total: 95 },
+  { sku: "Office 365 E3 (sem Teams)",           total: 28 },
   { sku: "Power BI Pro",                        total: 11 },
   { sku: "Power Automate Premium",               total: 1 },
   { sku: "OneDrive for Business (Plan 2)",       total: 1 },
 ];
-
-// =====================================================================
-// QUANTIDADE DE RENOVAÇÃO (09/06) — decidida pela negociação
-// Estas são as quantidades a CONTRATAR no novo ciclo
-// =====================================================================
-const RENEWAL_QUANTITIES = {
-  "Microsoft 365 Empresas Basic":   238,
-  "Microsoft 365 Empresas":          62,
-  "Microsoft Teams Enterprise":     100,  // devolve 55
-  "Office 365 E1 (sem Teams)":       95,  // devolve 56
-  "Office 365 E3 (sem Teams)":       27,
-  "Power BI Pro":                    11,
-  "Power Automate Premium":           1,
-  "OneDrive for Business (Plan 2)":   1,
-};
 
 // Aliases para o CSV de inventário (Licenças do Admin Center)
 const INVENTORY_ALIASES = {
@@ -1003,7 +976,6 @@ let exportData = EMBEDDED_DATA;  // já começa com dados
 let masterData = {};
 let inventory = null;       // [{sku, total, assigned, unused}]
 let prices = { ...DEFAULT_PRICES };
-let newPrices = { ...NEW_PRICES_DEFAULT };
 let masterLoaded = false;
 let users = [];
 
@@ -1016,7 +988,7 @@ const state = {
   sortDir: "desc",
   page: 1,
   pageSize: 25,
-  optTab: "renewal",  // "renewal" | "inventory" | "redundancy"
+  optTab: "costs",  // "costs" | "inventory" | "redundancy"
 };
 
 // =====================================================================
@@ -1128,19 +1100,15 @@ document.getElementById("fileMaster").addEventListener("change", async e => {
     // range 4 = pula header de "Tabela de Preços", subtítulo, linha de instruções
     const pxRows = XLSX.utils.sheet_to_json(wsPx, { range: 4, defval: "" });
     prices = {};
-    newPrices = {};
     pxRows.forEach(r => {
       const sku = (r["SKU (nome no Microsoft 365 Admin)"] || r["SKU"] || "").toString().trim();
       if (!sku) return;
       const pAtual = parseFloat(r["Preço atual (R$)"] || r["Preço mensal (R$)"]) || 0;
-      const pNovo = parseFloat(r["Preço novo — renovação (R$)"] || r["Preço novo"]) || pAtual;
       const canonical = normalizeSku(sku);
       prices[canonical] = pAtual;
-      newPrices[canonical] = pNovo;
     });
   } else {
     prices = { ...DEFAULT_PRICES };
-    newPrices = { ...NEW_PRICES_DEFAULT };
   }
 
   const box = document.getElementById("boxMaster");
@@ -1555,7 +1523,7 @@ function renderSKUs() {
 }
 
 // =====================================================================
-// OTIMIZAÇÃO (inventário, renovação, redundâncias)
+// OTIMIZAÇÃO (custos, inventário, redundâncias)
 // =====================================================================
 function renderOptimization() {
   const section = document.getElementById("optimizationSection");
@@ -1564,165 +1532,109 @@ function renderOptimization() {
     return;
   }
   section.classList.remove("hidden");
-  document.getElementById("renewalDate").textContent = `Renovação em ${RENEWAL_DATE}`;
 
   // Mostra/esconde subpanels
-  document.getElementById("optRenewal").classList.toggle("hidden", state.optTab !== "renewal");
+  document.getElementById("optCosts").classList.toggle("hidden", state.optTab !== "costs");
   document.getElementById("optInventory").classList.toggle("hidden", state.optTab !== "inventory");
   document.getElementById("optRedundancy").classList.toggle("hidden", state.optTab !== "redundancy");
 
-  // Conta licenças removíveis (por redundância) por SKU
-  const removableBySku = {};
-  users.forEach(u => {
-    u.issues.forEach(iss => {
-      if (iss.severity === "danger" && iss.removable) {
-        removableBySku[iss.removable] = (removableBySku[iss.removable] || 0) + 1;
-      }
-    });
-  });
-
-  if (state.optTab === "renewal") renderRenewal(removableBySku);
+  if (state.optTab === "costs") renderCosts();
   else if (state.optTab === "inventory") renderInventory();
   else if (state.optTab === "redundancy") renderRedundancy();
 }
 
-function renderRenewal(removableBySku) {
+function renderCosts() {
   const paid = inventory.filter(r => (prices[r.sku] || 0) > 0);
 
-  // ===== Cálculos por SKU =====
-  let totalAtual = 0, totalRenov = 0;
+  // ===== Cálculos por SKU + rateio por BU =====
+  // Para cada SKU, contamos quantos usuários de cada BU usam e calculamos o custo por BU
+  let total = 0, totalSobras = 0;
+  const buCost = {};       // bu -> custo mensal atribuído
+  const buBreakdown = {};  // bu -> { sku -> { qtd, custo } }
+  const sobrasPorSku = {}; // sku -> { qtd, custo }
+
   const skuRows = paid.map(r => {
-    const sku = r.sku;
-    const pAtual = prices[sku] || 0;
-    const pNovo = newPrices[sku] || pAtual;
-    const qtdAtual = r.total;
-    const qtdRenov = (sku in RENEWAL_QUANTITIES) ? RENEWAL_QUANTITIES[sku] : r.assigned;
-    const devolucao = qtdAtual - qtdRenov;
-    const custoAtual = qtdAtual * pAtual;
-    const custoRenov = qtdRenov * pNovo;
-    totalAtual += custoAtual;
-    totalRenov += custoRenov;
-    return { sku, pAtual, pNovo, qtdAtual, qtdRenov, devolucao, custoAtual, custoRenov, assigned: r.assigned };
-  });
+    const preco = prices[r.sku] || 0;
+    const custo = r.total * preco;
+    total += custo;
 
-  // ===== Rateio por BU =====
-  // Para cada SKU, contamos quantos usuários de cada BU usam, e calculamos o custo por BU
-  const buCost = {};   // bu -> custo total renovação (preços novos)
-  const buCostAtual = {}; // bu -> custo atual (mesma qtd, preços atuais)
-  const buBreakdown = {}; // bu -> { sku -> { qtd, custo, custoAtual } }
-  const sobrasPorSku = {}; // sku -> { qtd, custo, qtdRenov }
-
-  skuRows.forEach(r => {
-    // Conta atribuições por BU para este SKU
     const buAssignments = {};
     users.forEach(u => {
       if (u.licenses.includes(r.sku)) {
         buAssignments[u.bu] = (buAssignments[u.bu] || 0) + 1;
       }
     });
-    const totalAssigned = Object.values(buAssignments).reduce((a, b) => a + b, 0);
-    // Custo atribuído por BU = qtd_bu × preço_novo (e × preço_atual pra comparação)
     Object.entries(buAssignments).forEach(([bu, qtd]) => {
-      const costNovo = qtd * r.pNovo;
-      const costAtual = qtd * r.pAtual;
-      buCost[bu] = (buCost[bu] || 0) + costNovo;
-      buCostAtual[bu] = (buCostAtual[bu] || 0) + costAtual;
+      buCost[bu] = (buCost[bu] || 0) + qtd * preco;
       if (!buBreakdown[bu]) buBreakdown[bu] = {};
-      buBreakdown[bu][r.sku] = { qtd, custo: costNovo, custoAtual: costAtual };
+      buBreakdown[bu][r.sku] = { qtd, custo: qtd * preco };
     });
-    // Sobras = qtdRenov − totalAssigned
-    const sobraQtd = Math.max(0, r.qtdRenov - totalAssigned);
+    const atribuidas = Object.values(buAssignments).reduce((a, b) => a + b, 0);
+
+    // Sobras = contratadas − atribuídas
+    const sobraQtd = Math.max(0, r.total - atribuidas);
     if (sobraQtd > 0) {
-      sobrasPorSku[r.sku] = { qtd: sobraQtd, custo: sobraQtd * r.pNovo, precoNovo: r.pNovo };
+      sobrasPorSku[r.sku] = { qtd: sobraQtd, custo: sobraQtd * preco };
+      totalSobras += sobraQtd * preco;
     }
+    return { sku: r.sku, preco, qtd: r.total, atribuidas, sobraQtd, custo };
   });
 
-  const totalSobras = Object.values(sobrasPorSku).reduce((s, x) => s + x.custo, 0);
   const totalRateado = Object.values(buCost).reduce((a, b) => a + b, 0);
 
   // ===== Cards de resumo =====
-  const deltaVal = totalRenov - totalAtual;
-  const deltaCls = deltaVal > 0 ? 'up' : 'down';
-  const deltaSign = deltaVal > 0 ? '+' : '';
-
   document.getElementById("scenariosGrid").innerHTML = `
     <div class="scenario-card atual">
-      <div class="scenario-label">Cenário atual</div>
-      <div class="scenario-cost">${BRL(totalAtual)}</div>
-      <div class="scenario-annual">${BRL(totalAtual * 12)} / ano</div>
-      <div class="scenario-delta" style="background: var(--bg); color: var(--text-muted);">contrato hoje</div>
-    </div>
-    <div class="scenario-card renov-otim recomendado">
-      <div class="scenario-label">★ Renovação 09/06</div>
-      <div class="scenario-cost">${BRL(totalRenov)}</div>
-      <div class="scenario-annual">${BRL(totalRenov * 12)} / ano</div>
-      <span class="scenario-delta ${deltaCls}">${deltaSign}${BRL(deltaVal)}/mês vs Atual</span>
+      <div class="scenario-label">Custo mensal (contrato)</div>
+      <div class="scenario-cost">${BRL(total)}</div>
+      <div class="scenario-annual">${BRL(total * 12)} / ano</div>
+      <div class="scenario-delta" style="background: var(--bg); color: var(--text-muted);">preços vigentes</div>
     </div>
     <div class="scenario-card">
       <div class="scenario-label">Rateado às BUs</div>
       <div class="scenario-cost">${BRL(totalRateado)}</div>
       <div class="scenario-annual">${BRL(totalRateado * 12)} / ano</div>
-      <div class="scenario-delta" style="background: var(--bg); color: var(--text-muted);">${((totalRateado/totalRenov)*100).toFixed(1)}% do total</div>
+      <div class="scenario-delta" style="background: var(--bg); color: var(--text-muted);">${((totalRateado / Math.max(total, 1)) * 100).toFixed(1)}% do total</div>
     </div>
     <div class="scenario-card" style="border-color: var(--orange);">
       <div class="scenario-label" style="color: var(--orange);">Sobras (não rateadas)</div>
       <div class="scenario-cost" style="color: var(--orange);">${BRL(totalSobras)}</div>
-      <div class="scenario-annual">${BRL(totalSobras * 12)} / ano · ${BRL(totalSobras*100/Math.max(totalRenov,1)).slice(3)}% do contrato</div>
+      <div class="scenario-annual">${BRL(totalSobras * 12)} / ano · ${((totalSobras / Math.max(total, 1)) * 100).toFixed(1)}% do contrato</div>
       <div class="scenario-delta" style="background: var(--orange-bg); color: var(--orange);">decidir caso a caso</div>
     </div>
   `;
 
   // ===== Tabela detalhada por SKU =====
-  let tbody = skuRows.map(r => {
-    const delta = r.custoRenov - r.custoAtual;
-    const dCls = delta > 0 ? 'delta-up' : (delta < 0 ? 'delta-down' : 'delta-zero');
-    const dSign = delta > 0 ? '+' : '';
-    const priceChange = r.pNovo === r.pAtual
-      ? ''
-      : r.pNovo > r.pAtual
-        ? `<span class="price-change-up">↑ ${((r.pNovo/r.pAtual-1)*100).toFixed(0)}%</span>`
-        : `<span class="price-change-down">↓ ${((1-r.pNovo/r.pAtual)*100).toFixed(0)}%</span>`;
-    const devClass = r.devolucao > 0 ? 'style="color: var(--orange); font-weight: 600;"' : '';
-    return `
+  const tbody = skuRows.map(r => `
       <tr>
         <td>${r.sku}</td>
-        <td>${r.qtdAtual}</td>
-        <td><b>${r.qtdRenov}</b></td>
-        <td ${devClass}>${r.devolucao > 0 ? '−' + r.devolucao : (r.devolucao < 0 ? '+' + Math.abs(r.devolucao) : '0')}</td>
-        <td>${BRL(r.pAtual)} → ${BRL(r.pNovo)} ${priceChange}</td>
-        <td>${BRL(r.custoAtual)}</td>
-        <td><b>${BRL(r.custoRenov)}</b></td>
-        <td class="${dCls}"><b>${dSign}${BRL(delta)}</b></td>
+        <td><b>${r.qtd}</b></td>
+        <td>${r.atribuidas}</td>
+        <td ${r.sobraQtd > 0 ? 'style="color: var(--orange); font-weight: 600;"' : ''}>${r.sobraQtd}</td>
+        <td>${BRL(r.preco)}</td>
+        <td><b>${BRL(r.custo)}</b></td>
+        <td>${BRL(r.custo * 12)}</td>
       </tr>
-    `;
-  }).join("");
+    `).join("");
 
-  document.getElementById("renewalTable").innerHTML = `
+  document.getElementById("costsTable").innerHTML = `
     <thead>
       <tr>
         <th>Produto</th>
-        <th>Lic. Atual</th>
-        <th>Lic. Renov.</th>
-        <th>Devolução</th>
+        <th>Contratadas</th>
+        <th>Atribuídas</th>
+        <th>Sobra</th>
         <th>Preço unit.</th>
-        <th>Gasto Atual</th>
-        <th>Gasto Renov.</th>
-        <th>Δ Mensal</th>
+        <th>Gasto / mês</th>
+        <th>Gasto / ano</th>
       </tr>
     </thead>
     <tbody>${tbody}</tbody>
     <tfoot>
       <tr>
-        <td colspan="5">TOTAL / mês</td>
-        <td>${BRL(totalAtual)}</td>
-        <td><b>${BRL(totalRenov)}</b></td>
-        <td class="${deltaVal > 0 ? 'delta-up' : 'delta-down'}"><b>${deltaSign}${BRL(deltaVal)}</b></td>
-      </tr>
-      <tr>
-        <td colspan="5">TOTAL / ano</td>
-        <td>${BRL(totalAtual * 12)}</td>
-        <td><b>${BRL(totalRenov * 12)}</b></td>
-        <td class="${deltaVal > 0 ? 'delta-up' : 'delta-down'}"><b>${deltaSign}${BRL(deltaVal * 12)}</b></td>
+        <td colspan="5">TOTAL</td>
+        <td><b>${BRL(total)}</b></td>
+        <td><b>${BRL(total * 12)}</b></td>
       </tr>
     </tfoot>
   `;
@@ -1736,21 +1648,10 @@ function renderRenewal(removableBySku) {
     <div class="bu-grid">
   `;
   buEntries.forEach(([bu, cost]) => {
-    const pct = (cost / totalRenov * 100).toFixed(1);
+    const pct = (cost / total * 100).toFixed(1);
     const userCount = users.filter(u => u.bu === bu).length;
-    const costAtual = buCostAtual[bu] || 0;
-    const economia = costAtual - cost;  // positivo = economia, negativo = aumento
-    const economiaCls = economia > 0 ? 'savings-pos' : (economia < 0 ? 'savings-neg' : 'savings-zero');
-    let savingsText;
-    if (economia === 0) {
-      savingsText = 'Sem variação no preço';
-    } else if (economia > 0) {
-      savingsText = '-' + BRL(economia) + '/mês economia';
-    } else {
-      savingsText = '+' + BRL(Math.abs(economia)) + '/mês aumento';
-    }
     buHtml += `
-      <div class="bu-card" onclick='showBURenewalDetail(${JSON.stringify(bu)}, ${JSON.stringify(buBreakdown[bu] || {})})'>
+      <div class="bu-card" onclick='showBUCostDetail(${JSON.stringify(bu)}, ${JSON.stringify(buBreakdown[bu] || {})})'>
         <div class="bu-card-head">
           <div class="bu-name">${bu}</div>
           <div class="bu-share">${pct}%</div>
@@ -1760,14 +1661,13 @@ function renderRenewal(removableBySku) {
           <span>${userCount} usuários</span>
           <span>${BRL(cost*12)}/ano</span>
         </div>
-        <div class="bu-savings ${economiaCls}">${savingsText}</div>
         <div class="bu-progress"><div class="bu-progress-fill" style="width: ${pct}%"></div></div>
       </div>
     `;
   });
   // Card de Sobras
   if (totalSobras > 0) {
-    const pctS = (totalSobras / totalRenov * 100).toFixed(1);
+    const pctS = (totalSobras / total * 100).toFixed(1);
     buHtml += `
       <div class="bu-card unmapped" onclick='showSobrasDetail(${JSON.stringify(sobrasPorSku)})'>
         <div class="bu-card-head">
@@ -1791,19 +1691,19 @@ function renderRenewal(removableBySku) {
   const block = document.createElement("div");
   block.id = "buRateioBlock";
   block.innerHTML = buHtml;
-  document.getElementById("renewalTable").parentElement.parentElement.appendChild(block);
+  document.getElementById("costsTable").parentElement.parentElement.appendChild(block);
 }
 
-// Modal: detalhe de uma BU na renovação
-function showBURenewalDetail(bu, breakdown) {
+// Modal: detalhe de uma BU no rateio
+function showBUCostDetail(bu, breakdown) {
   const entries = Object.entries(breakdown).sort((a, b) => b[1].custo - a[1].custo);
   const total = entries.reduce((s, [, v]) => s + v.custo, 0);
-  document.getElementById("modalTitle").innerHTML = `${bu} <span style="font-size:13px; color:var(--text-muted); font-weight:400;">— rateio na renovação</span>`;
+  document.getElementById("modalTitle").innerHTML = `${bu} <span style="font-size:13px; color:var(--text-muted); font-weight:400;">— rateio de custos</span>`;
   document.getElementById("modalBody").innerHTML = `
     <div style="background: var(--pink-bg); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
       <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">TOTAL MENSAL ATRIBUÍDO</div>
       <div style="font-size: 24px; font-weight: 700; color: var(--pink-dark);">${BRL(total)}</div>
-      <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${BRL(total * 12)} / ano · com preços de renovação</div>
+      <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${BRL(total * 12)} / ano · preços vigentes</div>
     </div>
     <div style="font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Quebra por licença</div>
     <table style="width: 100%; font-size: 13px;">
@@ -1840,7 +1740,7 @@ function showSobrasDetail(sobras) {
       <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${BRL(total * 12)} / ano</div>
     </div>
     <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
-      Licenças que estarão contratadas após a renovação mas que <b>ainda não foram atribuídas a um usuário</b>. Decida caso a caso: usar para novas contratações ou negociar devolução.
+      Licenças contratadas que <b>ainda não foram atribuídas a um usuário</b>. Decida caso a caso: usar para novas contratações ou negociar devolução.
     </div>
     <table style="width: 100%; font-size: 13px;">
       <thead>
