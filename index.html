@@ -633,7 +633,7 @@
 // IMPORTANTE: isso protege contra acesso casual, mas NÃO contra inspeção técnica.
 // O hash da senha está no código; alguém com conhecimento de DevTools pode burlar.
 // Para proteção real, usar Cloudflare Access ou Vercel Pro.
-const PASSWORD_HASH = "d99fd2c85e35288b93d514313f20756b34d1d437ec6e4caf2649316a4be5e2c3";
+const PASSWORD_HASH = "a616701152ff19d789cb963ffdc651e270a0ca14dbe8cfa789ab4fb9d834301d";
 
 async function sha256(str) {
   const buf = new TextEncoder().encode(str);
